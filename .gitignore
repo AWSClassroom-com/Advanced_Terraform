@@ -1,0 +1,30 @@
+# Terraform local state and runtime artifacts
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Per-student values — never commit; .example files are the templates
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Saved plan artifacts
+*.tfplan
+tfplan
+plan.out
+
+# Generated config (terraform plan -generate-config-out=...)
+generated.tf
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/

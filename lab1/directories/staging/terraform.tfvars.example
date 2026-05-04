@@ -1,0 +1,6 @@
+# lab1-directories/staging/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and edit.
+
+account        = "userxx"                              # REPLACE
+state_bucket_name = "tf-state-userxx-XXXXXXXX"     # REPLACE: same bucket from Day 2

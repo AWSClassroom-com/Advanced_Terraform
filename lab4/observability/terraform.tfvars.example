@@ -1,0 +1,7 @@
+# lab4-observability/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and fill in.
+
+account           = "userxx"                            # Your IAM username
+region            = ""                                  # Your assigned region
+state_bucket_name = "tf-state-userxx-XXXXXXXX"          # From Day 2 Lab 3 outputs

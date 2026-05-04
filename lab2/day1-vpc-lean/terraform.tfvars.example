@@ -1,0 +1,14 @@
+# lab2-day1-vpc-lean/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and edit the account value to your IAM username.
+# All other values default to Day 1-2's tfvars.
+
+account = "userxx"   # REPLACE: your IAM username (e.g. user07)
+
+# Optional overrides — defaults match Day 1-2:
+# region               = "us-east-2"   # change to your assigned region
+# vpc_name             = "vpc"
+# vpc_cidr             = "192.168.0.0/20"
+# public_subnet_a_name = "public-subnet-a"
+# public_subnet_a_cidr = "192.168.0.0/24"
+# route_table_name     = "public-route-table"
