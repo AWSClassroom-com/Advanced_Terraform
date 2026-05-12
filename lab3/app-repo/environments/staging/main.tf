@@ -34,9 +34,9 @@ provider "aws" {
 }
 
 module "app" {
-  source = "../../modules/app"
-  environment = "staging"
-  student_id     =    "studentXX"
+  source         = "../../modules/app"
+  environment    = "staging"
+  student_id     = "studentXX"
   instance_count = 2
 }
 

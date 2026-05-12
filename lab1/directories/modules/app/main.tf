@@ -11,13 +11,13 @@ data "terraform_remote_state" "networking" {
   config = {
     bucket = var.state_bucket_name
     key    = "networking/terraform.tfstate"
-    region = "us-east-2"  # change to your assigned region if not us-east-2
+    region = "us-east-2" # change to your assigned region if not us-east-2
   }
 }
 
 resource "aws_ssm_parameter" "app_config" {
-  name  = "/${var.account}/${var.environment}/app-config-dir"
-  type  = "String"
+  name = "/${var.account}/${var.environment}/app-config-dir"
+  type = "String"
 
   value = jsonencode({
     environment       = var.environment

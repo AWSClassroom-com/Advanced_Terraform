@@ -6,11 +6,11 @@ terraform {
   # IMPORTANT: Replace the bucket value below with your actual value from Lab 1.
   # Run `terraform output` in lab1-state-infra/ to get your state_bucket_name.
   backend "s3" {
-    bucket       = "studentXX-terraform-state-SUFFIX"  # <- Replace with your state_bucket_name from Lab 1
+    bucket       = "studentXX-terraform-state-SUFFIX" # <- Replace with your state_bucket_name from Lab 1
     key          = "pipeline/terraform.tfstate"
     region       = "us-east-1"
     encrypt      = true
-    use_lockfile = true  # Uses S3 native locking instead of DynamoDB
+    use_lockfile = true # Uses S3 native locking instead of DynamoDB
   }
 
   required_providers {
@@ -26,7 +26,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student   = "studentXX"  # <- Replace with your student_id
+      Student   = "studentXX" # <- Replace with your student_id
       Purpose   = "Terraform Pipeline"
       ManagedBy = "Terraform"
     }

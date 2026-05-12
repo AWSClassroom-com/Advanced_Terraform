@@ -13,11 +13,11 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "tf-state-userxx-XXXXXXXX"  # REPLACE: your bucket from Day 2
-    key          = "networking/terraform.tfstate"        # No env:/ prefix — networking state is shared
-    region       = "us-east-2"  # change to your assigned region if not us-east-2
+    bucket       = "tf-state-userxx-XXXXXXXX"     # REPLACE: your bucket from Day 2
+    key          = "networking/terraform.tfstate" # No env:/ prefix — networking state is shared
+    region       = "us-east-2"                    # change to your assigned region if not us-east-2
     encrypt      = true
-    use_lockfile = true                                  # Terraform 1.10+ S3 native locking
+    use_lockfile = true # Terraform 1.10+ S3 native locking
   }
 
   required_providers {
@@ -29,14 +29,14 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2"  # change to your assigned region if not us-east-2
+  region = "us-east-2" # change to your assigned region if not us-east-2
 
   default_tags {
     tags = {
-      Course      = "Terraform Day 3"
-      Lab         = "Lab 1 - Networking"
-      ManagedBy   = "terraform"
-      Owner       = "networking-team"
+      Course    = "Terraform Day 3"
+      Lab       = "Lab 1 - Networking"
+      ManagedBy = "terraform"
+      Owner     = "networking-team"
     }
   }
 }

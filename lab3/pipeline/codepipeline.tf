@@ -192,13 +192,3 @@ resource "aws_codepipeline" "terraform" {
     Name = "${var.student_id}-terraform-pipeline"
   }
 }
-
-output "pipeline_name" {
-  description = "Name of the CodePipeline"
-  value       = aws_codepipeline.terraform.name
-}
-
-output "pipeline_arn" {
-  description = "ARN of the CodePipeline"
-  value       = aws_codepipeline.terraform.arn
-}

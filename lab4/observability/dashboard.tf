@@ -95,7 +95,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.account}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = "us-east-2"  # change to your assigned region if not us-east-2
+          region = "us-east-2" # change to your assigned region if not us-east-2
           title  = "Pipeline Successes"
           period = 86400
           stat   = "Sum"
@@ -113,7 +113,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             ["AWS/CodePipeline", "PipelineExecutionFailed", "PipelineName", "${var.account}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = "us-east-2"  # change to your assigned region if not us-east-2
+          region = "us-east-2" # change to your assigned region if not us-east-2
           title  = "Pipeline Failures"
           period = 86400
           stat   = "Sum"

@@ -12,9 +12,9 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    key          = "imported/terraform.tfstate"   # Workspace prefix env:/dev/ added automatically
+    key          = "imported/terraform.tfstate" # Workspace prefix env:/dev/ added automatically
     encrypt      = true
-    use_lockfile = true                            # Terraform 1.10+ S3 native locking — Day 3 NEW material
+    use_lockfile = true # Terraform 1.10+ S3 native locking — Day 3 NEW material
   }
 
   required_providers {

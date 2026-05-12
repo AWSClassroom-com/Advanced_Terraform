@@ -17,8 +17,8 @@ variable "state_bucket_name" {
 module "app" {
   source = "../modules/app"
 
-  account        = var.account
-  environment       = "staging"   # Explicit — not from workspace
+  account           = var.account
+  environment       = "staging" # Explicit — not from workspace
   state_bucket_name = var.state_bucket_name
 }
 

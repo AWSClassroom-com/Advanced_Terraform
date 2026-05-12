@@ -11,8 +11,8 @@ resource "aws_vpc" "shared" {
   enable_dns_support   = true
 
   tags = {
-    Name      = "${var.account}-shared-vpc"
-    Purpose   = "shared-networking"
+    Name    = "${var.account}-shared-vpc"
+    Purpose = "shared-networking"
   }
 }
 

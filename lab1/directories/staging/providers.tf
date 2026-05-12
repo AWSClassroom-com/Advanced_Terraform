@@ -7,9 +7,9 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "tf-state-userxx-XXXXXXXX"        # REPLACE: your bucket
-    key          = "directories/staging/terraform.tfstate"     # Path includes env name
-    region       = "us-east-2"  # change to your assigned region if not us-east-2
+    bucket       = "tf-state-userxx-XXXXXXXX"              # REPLACE: your bucket
+    key          = "directories/staging/terraform.tfstate" # Path includes env name
+    region       = "us-east-2"                             # change to your assigned region if not us-east-2
     encrypt      = true
     use_lockfile = true
   }
@@ -23,5 +23,5 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2"  # change to your assigned region if not us-east-2
+  region = "us-east-2" # change to your assigned region if not us-east-2
 }

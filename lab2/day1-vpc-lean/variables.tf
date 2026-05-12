@@ -14,7 +14,7 @@ variable "account" {
 }
 
 variable "vpc_name" {
-  description = "Name suffix for the VPC. Becomes part of `${account}-${vpc_name}`."
+  description = "Name suffix for the VPC. Combined with the account variable to form the full VPC Name tag (account-vpc_name)."
   type        = string
   default     = "vpc"
 }
