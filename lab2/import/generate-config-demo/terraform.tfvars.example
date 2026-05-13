@@ -1,0 +1,25 @@
+# lab2-import/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and fill in.
+
+account = "userxx"   # Your IAM username, same as Day 1-2 (e.g. user07)
+region  = ""         # The AWS region your instructor assigned (e.g. us-east-2)
+
+# VPC stack resource IDs — get from Day 1-2 outputs OR
+# from `terraform output` in lab2-day1-vpc-lean/.
+vpc_id              = "vpc-0xxxxxxxxxxxxxxxx"
+subnet_id           = "subnet-0xxxxxxxxxxxxxxxx"
+internet_gateway_id = "igw-0xxxxxxxxxxxxxxxx"
+route_table_id      = "rtb-0xxxxxxxxxxxxxxxx"
+
+# Security group + 3 rule IDs.
+# Get the SG ID from `aws ec2 describe-security-groups --filters "Name=group-name,Values=userxx-allow-http-ssh"`.
+# Get rule IDs (start with sgr-) from `aws ec2 describe-security-group-rules --filters "Name=group-id,Values=<sg-id>"`.
+security_group_id = "sg-0xxxxxxxxxxxxxxxx"
+sg_rule_http_id   = "sgr-0xxxxxxxxxxxxxxxx"
+sg_rule_ssh_id    = "sgr-0xxxxxxxxxxxxxxxx"
+sg_rule_egress_id = "sgr-0xxxxxxxxxxxxxxxx"
+
+# Optional overrides (defaults match Day 1-2):
+# vpc_cidr           = "192.168.0.0/20"
+# public_subnet_cidr = "192.168.0.0/24"
