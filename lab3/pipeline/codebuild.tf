@@ -3,13 +3,21 @@
 # =============================================================================
 # Artifacts Bucket
 # =============================================================================
-# Pipeline artifacts (source code, plan files) are stored here between stages
+# Pipeline artifacts (source code, plan files) are stored here between stages.
+# A random suffix keeps the bucket name globally unique even when multiple
+# cohorts run the lab with the same student_id (S3 bucket names are global).
+
+resource "random_string" "artifacts_suffix" {
+  length  = 6
+  special = false
+  upper   = false
+}
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "${var.student_id}-pipeline-artifacts"
+  bucket = "${var.student_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
 
   tags = {
-    Name = "${var.student_id}-pipeline-artifacts"
+    Name = "${var.student_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
   }
 }
 

@@ -59,8 +59,8 @@ resource "aws_iam_role_policy" "codebuild" {
         Resource = [
           "arn:aws:s3:::${var.state_bucket_name}",
           "arn:aws:s3:::${var.state_bucket_name}/*",
-          "arn:aws:s3:::${var.student_id}-pipeline-artifacts",
-          "arn:aws:s3:::${var.student_id}-pipeline-artifacts/*"
+          aws_s3_bucket.artifacts.arn,
+          "${aws_s3_bucket.artifacts.arn}/*"
         ]
       },
       {
@@ -145,8 +145,8 @@ resource "aws_iam_role_policy" "codepipeline" {
           "s3:GetBucketVersioning"
         ]
         Resource = [
-          "arn:aws:s3:::${var.student_id}-pipeline-artifacts",
-          "arn:aws:s3:::${var.student_id}-pipeline-artifacts/*"
+          aws_s3_bucket.artifacts.arn,
+          "${aws_s3_bucket.artifacts.arn}/*"
         ]
       }
     ]
