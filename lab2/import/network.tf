@@ -9,8 +9,15 @@
 # minus computed fields (arn, id, owner_id) that auto-generated config
 # would have included. This is the "cleanup pattern" Module 2 teaches.
 
-data "aws_availability_zones" "available" {
-  state = "available"
+# Look up the imported subnet's ACTUAL availability_zone rather than guessing
+# from `aws_availability_zones.available.names[0]`. The AZ ordering returned
+# by `aws_availability_zones` is not guaranteed to match what was deployed
+# at create time (AWS can mark zones impaired or add new ones), so anchoring
+# the resource's `availability_zone` to a static index would produce a
+# spurious destroy+recreate diff on `terraform plan` after import. Reading
+# from the live subnet via data source guarantees "0 to change".
+data "aws_subnet" "imported" {
+  id = var.subnet_id
 }
 
 resource "aws_vpc" "custom-vpc" {
@@ -32,7 +39,7 @@ resource "aws_vpc" "custom-vpc" {
 resource "aws_subnet" "subnet-a" {
   vpc_id                  = aws_vpc.custom-vpc.id
   cidr_block              = var.public_subnet_cidr
-  availability_zone       = data.aws_availability_zones.available.names[0]
+  availability_zone       = data.aws_subnet.imported.availability_zone
   map_public_ip_on_launch = true
 
   tags = {

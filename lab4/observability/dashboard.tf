@@ -1,12 +1,12 @@
-# lab4-observability/dashboard.tf  (LabForge patched version 2026-05-03)
+# lab4-observability/dashboard.tf  (LabForge patched version 2026-05-15)
 #
-# Drop-in replacement for the original dashboard.tf in the
-# terraform-sample-app-pipeline repo. Two changes vs. the original:
+# Drop-in replacement for the original dashboard.tf. Patches vs. the
+# previous version:
 #
-#   1. S3 widget now uses var.state_bucket_name (which already exists in
+#   1. S3 widget uses var.state_bucket_name (which already exists in
 #      variables.tf) instead of the hard-coded "${var.account}-terraform-state"
 #      pattern. This makes the widget actually populate when the bucket has
-#      a random suffix (which Lab 1's bucket does).
+#      a random suffix (Lab 1's bucket does).
 #
 #   2. The "DynamoDB Lock Operations" widget is replaced with an "S3 Lockfile
 #      PutObject" widget. Lab 1 uses Terraform 1.10+ S3 native locking
@@ -14,8 +14,15 @@
 #      Lockfile activity now shows up as PutObject calls on the state bucket
 #      with a key suffix of `.tflock`.
 #
-# Everything else (CodeBuild widgets, CodePipeline widgets, quick links,
-# audit query reference) is unchanged from the original.
+#   3. Region is now parameterised — every widget, console URL, and the
+#      dashboard_url output reads from var.region. Previously hardcoded
+#      to us-east-2 in 14 places, which broke any student NOT assigned
+#      us-east-2 ("No data" in every widget).
+#
+#   4. Header markdown now actually renders the account value. Previously
+#      "**Account:** **Region:** us-east-2 | ..." — two bold labels with no
+#      value between Account and Region. Now "**Account:** ${var.account}
+#      | **Region:** ${var.region} | ...".
 
 resource "aws_cloudwatch_dashboard" "terraform_ops" {
   dashboard_name = "${var.account}-terraform-operations"
@@ -32,7 +39,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         width  = 24
         height = 2
         properties = {
-          markdown = "# Terraform Operations Dashboard — ${var.account}\n**Account:** **Region:** us-east-2 | **State bucket:** `${var.state_bucket_name}`\n\nMonitors CI/CD pipeline health, state operations, and provides audit query references."
+          markdown = "# Terraform Operations Dashboard — ${var.account}\n**Account:** ${var.account} | **Region:** ${var.region} | **State bucket:** `${var.state_bucket_name}`\n\nMonitors CI/CD pipeline health, state operations, and provides audit query references."
         }
       },
 
@@ -55,7 +62,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = "us-east-2"
+          region  = var.region
           title   = "CodeBuild Duration (seconds)"
           period  = 300
           stat    = "Average"
@@ -77,7 +84,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = "us-east-2"
+          region  = var.region
           title   = "Build Success vs. Failure (Apply stages)"
           period  = 3600
           stat    = "Sum"
@@ -95,7 +102,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.account}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = "us-east-2" # change to your assigned region if not us-east-2
+          region = var.region
           title  = "Pipeline Successes"
           period = 86400
           stat   = "Sum"
@@ -113,7 +120,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             ["AWS/CodePipeline", "PipelineExecutionFailed", "PipelineName", "${var.account}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = "us-east-2" # change to your assigned region if not us-east-2
+          region = var.region
           title  = "Pipeline Failures"
           period = 86400
           stat   = "Sum"
@@ -133,7 +140,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = true
-          region  = "us-east-2"
+          region  = var.region
           title   = "Pipeline Executions Over Time"
           period  = 3600
         }
@@ -143,8 +150,8 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
       # Row 2: State & Infrastructure Operations
       # ---------------------------------------------------------------
       #
-      # NOTE (LabForge patch): BucketName is var.state_bucket_name (the actual
-      # bucket name with random suffix), NOT a constructed string.
+      # NOTE: BucketName is var.state_bucket_name (the actual bucket name
+      # with random suffix), NOT a constructed string.
       {
         type   = "metric"
         x      = 0
@@ -158,16 +165,15 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = "us-east-2"
+          region  = var.region
           title   = "State Bucket Operations (Get = plan, Put = apply)"
           period  = 300
           stat    = "Sum"
         }
       },
 
-      # PATCHED: was DynamoDB lock; now S3 lockfile PutObject activity.
-      # Requires the bucket to have a request metrics filter on prefix .tflock —
-      # see Appendix A of Lab 4 for the patch to lab1-state-infra/main.tf.
+      # State Lockfile Activity — empty until Appendix A applies the
+      # aws_s3_bucket_metric filter named "lockfile-activity".
       {
         type   = "metric"
         x      = 12
@@ -180,7 +186,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = "us-east-2"
+          region  = var.region
           title   = "State Lockfile Activity (S3 native locking — Terraform 1.10+)"
           period  = 300
           stat    = "Sum"
@@ -200,11 +206,11 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           markdown = <<-EOT
             ## Quick Links
 
-            - [CodePipeline → ${var.account}-terraform-pipeline](https://us-east-2.console.aws.amazon.com/codesuite/codepipeline/pipelines/${var.account}-terraform-pipeline/view)
-            - [CodeBuild Projects](https://us-east-2.console.aws.amazon.com/codesuite/codebuild/projects)
-            - [CloudTrail Event History](https://us-east-2.console.aws.amazon.com/cloudtrail/home#/events)
-            - [State Bucket](https://us-east-2.console.aws.amazon.com/s3/buckets/${var.state_bucket_name})
-            - [Logs Insights](https://us-east-2.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
+            - [CodePipeline → ${var.account}-terraform-pipeline](https://${var.region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${var.account}-terraform-pipeline/view)
+            - [CodeBuild Projects](https://${var.region}.console.aws.amazon.com/codesuite/codebuild/projects)
+            - [CloudTrail Event History](https://${var.region}.console.aws.amazon.com/cloudtrail/home#/events)
+            - [State Bucket](https://${var.region}.console.aws.amazon.com/s3/buckets/${var.state_bucket_name})
+            - [Logs Insights](https://${var.region}.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
           EOT
         }
       },
@@ -252,7 +258,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
 
 output "dashboard_url" {
   description = "Direct URL to view this dashboard in the CloudWatch console."
-  value       = "https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#dashboards:name=${aws_cloudwatch_dashboard.terraform_ops.dashboard_name}"
+  value       = "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards:name=${aws_cloudwatch_dashboard.terraform_ops.dashboard_name}"
 }
 
 output "dashboard_name" {
