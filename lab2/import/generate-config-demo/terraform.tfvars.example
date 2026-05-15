@@ -1,6 +1,8 @@
-# lab2-import/terraform.tfvars.example
+# lab2/import/generate-config-demo/terraform.tfvars.example
 #
-# Copy to terraform.tfvars and fill in.
+# Subset of the parent lab2/import/ tfvars — just the 8 IDs (+ region/account)
+# the demo's imports.tf references. The lab markdown tells students to
+# `cp ../terraform.tfvars terraform.tfvars` instead of filling this in.
 
 account = "userxx"   # Your IAM username, same as Day 1-2 (e.g. user07)
 region  = ""         # The AWS region your instructor assigned (e.g. us-east-2)
@@ -19,7 +21,3 @@ security_group_id = "sg-0xxxxxxxxxxxxxxxx"
 sg_rule_http_id   = "sgr-0xxxxxxxxxxxxxxxx"
 sg_rule_ssh_id    = "sgr-0xxxxxxxxxxxxxxxx"
 sg_rule_egress_id = "sgr-0xxxxxxxxxxxxxxxx"
-
-# Optional overrides (defaults match Day 1-2):
-# vpc_cidr           = "192.168.0.0/20"
-# public_subnet_cidr = "192.168.0.0/24"

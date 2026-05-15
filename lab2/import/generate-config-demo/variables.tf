@@ -1,4 +1,10 @@
-# lab2-import/variables.tf
+# lab2/import/generate-config-demo/variables.tf
+#
+# Subset of the parent lab2/import/ variables — only the 8 resource IDs the
+# imports.tf in this dir actually references. The parent's vpc_cidr /
+# public_subnet_cidr are intentionally not declared here because the demo
+# never runs `terraform apply`; it only does `terraform plan -generate-config-out`,
+# which doesn't need CIDR values.
 
 variable "region" {
   description = "AWS region. No default — set in terraform.tfvars to whatever your instructor assigned."
@@ -57,18 +63,3 @@ variable "sg_rule_egress_id" {
   type        = string
 }
 
-# ---------------------------------------------------------------------------
-# Day 1-2 baseline values — defaults match what aws/vpc/terraform.tfvars uses
-# ---------------------------------------------------------------------------
-
-variable "vpc_cidr" {
-  description = "CIDR block of the VPC being imported. Must match reality."
-  type        = string
-  default     = "192.168.0.0/20"
-}
-
-variable "public_subnet_cidr" {
-  description = "CIDR block of the public subnet being imported."
-  type        = string
-  default     = "192.168.0.0/24"
-}
