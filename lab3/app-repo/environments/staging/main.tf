@@ -1,16 +1,17 @@
-# environments/staging/main.tf - Staging environment
-# Deployed to us-east-1 via the pipeline
+# environments/staging/main.tf — Staging environment
+# Deployed automatically by Lab 3's CodePipeline. Region is pinned to
+# the staging region; backend bucket name is patched by the student
+# before the first commit.
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
-  # Use the actual bucket name from your Lab 1 `terraform output`
   backend "s3" {
-    bucket       = "studentXX-terraform-state-SUFFIX"
+    bucket       = "studentXX-terraform-state-SUFFIX" # replace before first commit
     key          = "pipeline/staging/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "us-east-2" # staging region — adjust if your bucket lives elsewhere
     encrypt      = true
-    use_lockfile = true # Uses S3 native locking instead of DynamoDB
+    use_lockfile = true # Terraform 1.10+ S3 native locking
   }
 
   required_providers {
@@ -22,25 +23,43 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-2" # staging deploy region
 
   default_tags {
     tags = {
-      Student     = "studentXX"
+      Student     = "studentXX" # replace before first commit
       Environment = "staging"
       ManagedBy   = "Terraform-Pipeline"
     }
   }
 }
 
+# Main path: EC2 + Apache (matches Day 1-2 pattern).
+# To switch to the serverless bonus module, change `source` to
+# "../../modules/app-serverless" and re-push. The interface is identical
+# so no other changes are required here.
 module "app" {
-  source         = "../../modules/app"
-  environment    = "staging"
-  student_id     = "studentXX"
-  instance_count = 2
+  source      = "../../modules/app"
+  student_id  = "studentXX" # replace before first commit
+  environment = "staging"
 }
 
-output "config_parameter" {
-  description = "Staging config parameter name"
-  value       = module.app.config_parameter_name
+output "public_ip" {
+  description = "Public IP of the staging web server (null when using the serverless module)."
+  value       = module.app.public_ip
+}
+
+output "api_url" {
+  description = "API Gateway URL — populated only when using the serverless module."
+  value       = module.app.api_url
+}
+
+output "instance_id" {
+  description = "EC2 instance ID or Lambda function name, depending on which module is in use."
+  value       = module.app.instance_id
+}
+
+output "vpc_id" {
+  description = "VPC ID for this environment (null when using the serverless module)."
+  value       = module.app.vpc_id
 }

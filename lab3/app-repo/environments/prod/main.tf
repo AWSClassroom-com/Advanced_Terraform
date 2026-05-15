@@ -1,16 +1,18 @@
-# environments/prod/main.tf - Production environment
-# Deployed to us-west-2 via the pipeline (geographic separation from staging)
+# environments/prod/main.tf — Production environment
+# Deployed automatically by Lab 3's CodePipeline AFTER the staging stage
+# has applied AND the human approver has clicked through the gate.
+# Production deploys to a DIFFERENT region from staging — this is the
+# whole point of the multi-region story in Module 3.
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
-  # Use the actual bucket name from your Lab 1 `terraform output`
   backend "s3" {
-    bucket       = "studentXX-terraform-state-SUFFIX"
+    bucket       = "studentXX-terraform-state-SUFFIX" # replace before first commit
     key          = "pipeline/prod/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "us-east-2" # bucket region — bucket itself lives in staging region
     encrypt      = true
-    use_lockfile = true # Uses S3 native locking instead of DynamoDB
+    use_lockfile = true
   }
 
   required_providers {
@@ -22,25 +24,39 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region = "us-west-2" # prod deploy region — different from staging
 
   default_tags {
     tags = {
-      Student     = "studentXX"
-      Environment = "production"
+      Student     = "studentXX" # replace before first commit
+      Environment = "prod"
       ManagedBy   = "Terraform-Pipeline"
     }
   }
 }
 
 module "app" {
-  source         = "../../modules/app"
-  environment    = "prod"
-  student_id     = "studentXX"
-  instance_count = 3
+  source      = "../../modules/app"
+  student_id  = "studentXX" # replace before first commit
+  environment = "prod"
 }
 
-output "config_parameter" {
-  description = "Production config parameter name"
-  value       = module.app.config_parameter_name
+output "public_ip" {
+  description = "Public IP of the prod web server (null when using the serverless module)."
+  value       = module.app.public_ip
+}
+
+output "api_url" {
+  description = "API Gateway URL — populated only when using the serverless module."
+  value       = module.app.api_url
+}
+
+output "instance_id" {
+  description = "EC2 instance ID or Lambda function name, depending on which module is in use."
+  value       = module.app.instance_id
+}
+
+output "vpc_id" {
+  description = "VPC ID for this environment (null when using the serverless module)."
+  value       = module.app.vpc_id
 }
