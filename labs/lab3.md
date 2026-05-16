@@ -128,7 +128,7 @@ By the end of this lab, you will:
 
 ## Task 2: Deploy Pipeline Infrastructure (10 min)
 
-> **Naming convention reminder.** Lab 3's pipeline stack uses **`student_id`** as its input variable (not `account` like Lab 2's lean VPC), and it validates the value against the regex `^student[0-9]{2}$` — so values like `userxx` or `user07` will be **rejected at plan time**. Use the same `studentNN` value you set in Lab 1 (e.g., `student07`). Every CodeCommit repo, CodePipeline, and CodeBuild project this stack creates will be prefixed with that value (`studentNN-terraform-repo`, `studentNN-terraform-pipeline`, `studentNN-codebuild-terraform-role`, etc.).
+> **Naming convention reminder.** Lab 3's pipeline stack uses **`student_id`** as its input variable (not `account` like Lab 2's lean VPC). It accepts either `^user[0-9]{2}$` (Lab 1's convention) or `^student[0-9]{2}$` — use the **same value you set in Lab 1** so the bucket name, CodeCommit repo, CodePipeline, and CodeBuild projects all share a consistent prefix (e.g., if Lab 1 used `user07`, use `user07` here too — every resource gets prefixed `user07-terraform-repo`, `user07-terraform-pipeline`, etc.).
 
 5. **Configure Variables**
 

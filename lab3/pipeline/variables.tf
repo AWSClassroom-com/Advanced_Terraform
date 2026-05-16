@@ -6,8 +6,11 @@ variable "student_id" {
   type        = string
 
   validation {
-    condition     = can(regex("^student[0-9]{2}$", var.student_id))
-    error_message = "Student ID must match the pattern 'studentXX' where XX is a two-digit number (e.g., student01)."
+    # Accepts both Day 3 Lab 1's convention (`userNN`) and the prior `studentNN`
+    # convention. Labs in this course share identity-driven naming, so this
+    # regex must match Lab 1's `^user[0-9]{2}$` validator.
+    condition     = can(regex("^(user|student)[0-9]{2}$", var.student_id))
+    error_message = "Student ID must match 'userXX' or 'studentXX' where XX is a two-digit number (e.g., user01 or student01)."
   }
 }
 
