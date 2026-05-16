@@ -237,16 +237,18 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
 
     > **Region hard-coded in `dashboard.tf`:** the widget JSON inside `dashboard.tf` hard-codes `"us-east-2"` in nine places (each widget's `region` field plus the `dashboard_url` output and Quick Links). If your assigned region is **not** `us-east-2`, the dashboard will render but every widget will show "No data" because the metrics live in your actual region. Workarounds: (1) deploy this lab to `us-east-2` explicitly even if other labs ran elsewhere, or (2) before `terraform apply`, search-and-replace `us-east-2` with your region in `dashboard.tf`. Option (1) is simpler for class.
 
+    > **State bucket region ≠ deploy region.** The S3 backend's `region` setting names the **bucket's** region, *not* the region where the resources are being deployed. They're independent. A team can keep state in `us-east-1` for audit and deploy resources to `us-west-2` — the backend `region` would still be `us-east-1` because that's where the bucket lives. In Step 13, pass the region your Lab 1 bucket was created in (run `aws s3api get-bucket-location --bucket <your-state-bucket-name>` if you're unsure — note that a `None`/`null` response means `us-east-1`, an AWS quirk).
+
 13. **Deploy the Dashboard**
 
     Initialize with explicit backend bucket and region — `providers.tf` expects both at init time, not in the file:
 
     ```bash
     terraform init \
-        -backend-config="bucket=studentXX-terraform-state-SUFFIX" \
-        -backend-config="region=us-east-2"
+        -backend-config="bucket=<your-state-bucket-name>" \
+        -backend-config="region=<state_bucket_region>"
     ```
-    Use **the same bucket name you put in `terraform.tfvars`** and the same region. Expected output ends with: `Terraform has been successfully initialized!`
+    Use **the same bucket name you put in `terraform.tfvars`** and the **bucket's** region (not necessarily your deploy region — see callout above). Expected output ends with: `Terraform has been successfully initialized!`
 
     ```bash
     terraform plan
