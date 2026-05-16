@@ -2,12 +2,12 @@
 # Input variables for Lab 1 state infrastructure
 
 variable "student_id" {
-  description = "Your assigned student ID (e.g., student01) — used to name the S3 state bucket"
+  description = "Your assigned student ID (e.g., user01) — used to name the S3 state bucket"
   type        = string
 
   validation {
-    condition     = can(regex("^student[0-9]{2}$", var.student_id))
-    error_message = "Student ID must match the pattern 'studentXX' where XX is a two-digit number."
+    condition     = can(regex("^user[0-9]{2}$", var.student_id))
+    error_message = "Student ID must match the pattern 'userXX' where XX is a two-digit number."
   }
 }
 

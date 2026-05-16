@@ -3,13 +3,13 @@
 # Copy to terraform.tfvars and fill in your assigned student ID.
 
 # REQUIRED — used to name the S3 state bucket.
-# Pattern: studentNN (two-digit number). Example: student07
-student_id = "studentXX"
+# Pattern: studentNN (two-digit number). Example: user07
+student_id = "userXX"
 
 # REQUIRED for Part D (cross-state app_config). Typically the same value as
 # student_id — used as the prefix for the /<account>/<environment>/app-config
 # SSM parameter created in Part D.
-account = "studentXX"
+account = "userXX"
 
 # Optional — defaults to us-east-2. Set this only if your instructor assigned
 # a different region.
@@ -19,4 +19,4 @@ account = "studentXX"
 # in this directory to get the actual bucket name, then paste it here so
 # Part D's terraform_remote_state data source can read the networking outputs
 # from the lab1/networking state.
-# state_bucket_name = "studentXX-terraform-state-abc123"
+# state_bucket_name = "userXX-terraform-state-abc123"

@@ -11,13 +11,13 @@ terraform {
   # Then run `terraform init` to migrate state.
   #
   # Example: If your output shows:
-  #   state_bucket_name = "student01-terraform-state-abc123"
+  #   state_bucket_name = "user01-terraform-state-abc123"
   #
   # Then your backend block should be:
-  #   bucket = "student01-terraform-state-abc123"
+  #   bucket = "user01-terraform-state-abc123"
   # -----------------------------------------------------------------
   # backend "s3" {
-  #   bucket       = "studentXX-terraform-state-SUFFIX"  # <- Replace with state_bucket_name
+  #   bucket       = "userXX-terraform-state-SUFFIX"  # <- Replace with state_bucket_name
   #   key          = "platform/state-infra/terraform.tfstate"
   #   region       = "us-east-1"
   #   encrypt      = true
@@ -47,7 +47,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student     = "studentXX"
+      Student     = "userXX"
       Project     = "terraform-state-infra"
       Environment = "management"
       ManagedBy   = "Terraform"

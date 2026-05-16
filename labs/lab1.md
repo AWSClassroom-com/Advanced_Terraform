@@ -260,11 +260,11 @@ The checkout team's near-miss happened because a junior engineer thought they we
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Open `terraform.tfvars` and set both variables to your assigned student ID. Use a **concrete** value like `student07` — the `student_id` variable enforces the regex `^student[0-9]{2}$`, so the literal placeholder `studentXX` will fail at plan time:
+    Open `terraform.tfvars` and set both variables to your assigned student ID. Use a **concrete** value like `user07` — the `student_id` variable enforces the regex `^user[0-9]{2}$`, so the literal placeholder `userXX` will fail at plan time:
 
     ```hcl
-    student_id = "student07"  # ← REPLACE 07 with YOUR assigned student number. Must match ^student[0-9]{2}$
-    account    = "student07"  # ← Same value as student_id (used as a prefix for Part D's app-config SSM parameter)
+    student_id = "user07"  # ← REPLACE 07 with YOUR assigned user number. Must match ^user[0-9]{2}$
+    account    = "user07"  # ← Same value as student_id (used as a prefix for Part D's app-config SSM parameter)
     ```
 
     Leave `region` and `state_bucket_name` commented out for now. You'll uncomment `state_bucket_name` after Part C completes.
@@ -285,7 +285,7 @@ The checkout team's near-miss happened because a junior engineer thought they we
     Expected output (yours will have a different random suffix):
 
     ```
-    state_bucket_name = "student07-terraform-state-x8k2m4"
+    state_bucket_name = "user07-terraform-state-x8k2m4"
     ```
 
     **Write this value down.** Every reference to "your state bucket" later in the lab means this exact value.
@@ -556,16 +556,19 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     Open `terraform.tfvars` and **uncomment** the `state_bucket_name` line (it was commented out when you copied from the example), pasting in the bucket name you captured in Step 18:
 
     ```hcl
-    student_id        = "studentXX"            # already set in Step 12
-    account           = "studentXX"            # already set in Step 12
-    state_bucket_name = "studentXX-terraform-state-abc123"  # <- uncomment + paste your actual bucket
+    student_id        = "userXX"            # already set in Step 12
+    account           = "userXX"            # already set in Step 12
+    state_bucket_name = "userXX-terraform-state-abc123"  # <- uncomment + paste your actual bucket
     ```
 
     > **Why this matters:** the `terraform_remote_state.networking` data source in `main.tf` is gated on `state_bucket_name` being set — until you fill this in, Part D is dormant and Part A's plan/apply succeed unchanged. Once you set it, Terraform reads the networking outputs from your lab1/networking state and creates the `app_config` SSM parameter.
 
 20. **Deploy the Application**
 
+    Return to the application directory (state-infra) before deploying — Part D's app config lives there, alongside the bootstrap config from Step 12:
+
     ```bash
+    cd ~/Advanced_Terraform/lab1/state-infra
     terraform plan
     ```
     (If you get a workspace_guard error here, you switched workspaces during Part B's experiments. Recover and continue.)
@@ -757,6 +760,7 @@ Optional — skip if you're short on time. This task gives you a concrete look a
     > Confirm you're in `lab1/state-infra/` on the `dev` workspace.
 
     ```bash
+    cd ~/Advanced_Terraform/lab1/state-infra
     # 1. Capture the bucket name from dev's state (after we switch workspaces,
     #    `terraform output` won't see it).
     BUCKET=$(terraform output -raw state_bucket_name)
@@ -833,9 +837,12 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     ```bash
     cd ~/Advanced_Terraform/lab1/state-infra
     terraform workspace select default
-    terraform workspace delete dev
-    terraform workspace delete staging
-    terraform workspace delete prod
+    # Some workspaces may already be gone after destroy if their state file
+    # was the only env:/<ws>/ object — that's fine.
+    terraform workspace delete dev     2>/dev/null || echo "(dev not present)"
+    terraform workspace delete staging 2>/dev/null || echo "(staging not present)"
+    terraform workspace delete prod    2>/dev/null || echo "(prod not present)"
+
     ```
     35. **Leave the bootstrap bucket in place**
 
