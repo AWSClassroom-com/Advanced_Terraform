@@ -49,7 +49,7 @@ By the end of this lab, you will:
 
 ## Architecture Overview
 
-![CI/CD Pipeline Architecture](../../assets/images/lab3_pipeline_architecture.png)
+![CI/CD Pipeline Architecture](../assets/images/lab3_pipeline_architecture.png)
 
 *Figure: The 8-stage CodePipeline deploys to staging (us-east-2) first, then promotes to production (us-west-2) after manual approval. Each environment gets its own isolated VPC with EC2 running Apache.*
 

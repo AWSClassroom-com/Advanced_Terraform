@@ -43,7 +43,7 @@ You need to demonstrate:
 
 ## Architecture Overview
 
-![Audit & Observability Architecture](../../assets/images/lab4_observability_architecture.png)
+![Audit & Observability Architecture](../assets/images/lab4_observability_architecture.png)
 
 *Figure: The observability layer provides three capabilities: CloudTrail for audit trail, Log Insights for queries, and CloudWatch Dashboard for real-time visibility.*
 

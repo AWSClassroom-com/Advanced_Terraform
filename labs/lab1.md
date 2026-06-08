@@ -44,7 +44,7 @@ By the end of this lab, you will be able to:
 
 ## Architecture Overview
 
-![Cross-State Dependencies Architecture](../../assets/images/lab1_architecture_overview.png)
+![Cross-State Dependencies Architecture](../assets/images/lab1_architecture_overview.png)
 
 *Figure: Networking state exports outputs that the application state reads via `terraform_remote_state`. Each workspace gets its own state path with the `env:/` prefix.*
 
