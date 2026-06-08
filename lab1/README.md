@@ -1,5 +1,9 @@
 # Lab 1: Multi-Environment State Strategy
 
+> 📖 **Student instructions:** [`../labs/lab1.md`](../labs/lab1.md)
+>
+> The Terraform code in this folder is what students run during the lab; the step-by-step instructions live in the `labs/` folder at the repo root.
+
 Workspaces, safety guards, cross-state dependencies, and the directory-vs-workspace decision.
 
 ## Subfolders

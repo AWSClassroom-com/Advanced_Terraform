@@ -4,6 +4,17 @@ Terraform code for the four hands-on labs in **Advanced Terraform on AWS** (Day 
 
 This is a **companion** to the Day 1-2 [hands-on-terraform](https://github.com/AWSClassroom-com/hands-on-terraform) repo. Day 3 assumes the Day 1-2 stack is already running: state bucket, VPC, security group, and the EC2 deploy server.
 
+## 📖 Start here — student instructions
+
+The numbered step-by-step lab walkthroughs live in [**`labs/`**](./labs/), one Markdown file per lab:
+
+- [`labs/lab1.md`](./labs/lab1.md) — Multi-Environment State Strategy
+- [`labs/lab2.md`](./labs/lab2.md) — Import Day 1-2 Infrastructure
+- [`labs/lab3.md`](./labs/lab3.md) — Pipeline Operations
+- [`labs/lab4.md`](./labs/lab4.md) — Auditing & Observability
+
+The top-level `lab1/`, `lab2/`, `lab3/`, `lab4/` folders contain the Terraform **code** each lab applies. Each of those folders has its own `README.md` describing the code structure; the actual lab walkthrough you should follow is in `labs/`.
+
 ## Labs
 
 | Lab | Folder | What it covers |

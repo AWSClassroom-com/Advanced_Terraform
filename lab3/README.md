@@ -1,5 +1,9 @@
 # Lab 3: Pipeline Operations
 
+> 📖 **Student instructions:** [`../labs/lab3.md`](../labs/lab3.md)
+>
+> The Terraform code in this folder is what students run during the lab; the step-by-step instructions live in the `labs/` folder at the repo root.
+
 CI/CD pipeline for Terraform: CodePipeline + CodeBuild + manual approval gates + multi-region promotion (staging → prod).
 
 ## Subfolders

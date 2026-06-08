@@ -1,5 +1,9 @@
 # Lab 2: Import Day 1-2 Infrastructure into Remote State
 
+> 📖 **Student instructions:** [`../labs/lab2.md`](../labs/lab2.md)
+>
+> The Terraform code in this folder is what students run during the lab; the step-by-step instructions live in the `labs/` folder at the repo root.
+
 Bring the existing Day 1-2 VPC + Security Group under proper remote-state Terraform management. **9 resources imported**, S3 state bucket deliberately not imported (it's already managed by Day 1-2's `module.s3_bucket` in `aws/s3-bucket/`).
 
 ## Subfolders
