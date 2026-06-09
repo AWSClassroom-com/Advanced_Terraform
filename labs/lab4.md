@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
-| **Module** | Enterprise Operations |
+| **Chapter** | Enterprise Operations |
 | **Duration** | 30 minutes |
 | **Difficulty** | Advanced |
 | **Version** | 2.2 |

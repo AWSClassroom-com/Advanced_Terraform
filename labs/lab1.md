@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
-| **Module** | Enterprise Workspaces & Cross-Environment Dependencies |
+| **Chapter** | Enterprise Workspaces & Cross-Environment Dependencies |
 | **Duration** | 60 minutes |
 | **Difficulty** | Advanced |
 | **Version** | 4.2 |

@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
-| **Module** | CI/CD Pipelines for Multi-Region Deployment |
+| **Chapter** | CI/CD Pipelines for Multi-Region Deployment |
 | **Duration** | 60 minutes |
 | **Difficulty** | Advanced |
 | **Version** | 3.2 |
@@ -718,13 +718,13 @@ You have successfully:
 | **Student isolation** | All resources tagged with your IAM username |
 | **Full lifecycle** | Create → verify → destroy through pipeline |
 
-### Connection to Modules
+### Connection to Chapters
 
-| Module | Lab Experience |
+| Chapter | Lab Experience |
 |--------|----------------|
-| Module 1 (State) | Separate state per environment (staging/prod) |
-| Module 2 (Import) | Contrast: Import is for existing infra; pipeline is for new infra |
-| Module 3 (Pipeline) | Full implementation of 6-stage pattern |
+| Chapter 1 (State) | Separate state per environment (staging/prod) |
+| Chapter 2 (Import) | Contrast: Import is for existing infra; pipeline is for new infra |
+| Chapter 3 (Pipeline) | Full implementation of 6-stage pattern |
 
 ---
 

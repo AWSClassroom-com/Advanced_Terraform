@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
-| **Module** | Importing Existing Infrastructure into Terraform |
+| **Chapter** | Importing Existing Infrastructure into Terraform |
 | **Duration** | 60 minutes |
 | **Difficulty** | Advanced |
 | **Version** | 3.2 (9-resource import, S3 intentionally excluded) |
@@ -287,7 +287,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
 
 Terraform 1.5+ can attempt to **generate config from existing AWS resources**. Let's see what it produces — and why it's only a starting point.
 
-> **Why a subfolder for this task?** `lab2/import/` ships with pre-cleaned `network.tf` and `security-group.tf` for the real import flow in Task 5. If you ran `-generate-config-out` there, terraform would see every resource already has config and exit silently — you'd never see the messy output Module 2 warned about. The `generate-config-demo/` subfolder strips those cleaned configs so generate-config has work to do (and fails the way the module described). Local state only — the demo never runs `terraform apply`.
+> **Why a subfolder for this task?** `lab2/import/` ships with pre-cleaned `network.tf` and `security-group.tf` for the real import flow in Task 5. If you ran `-generate-config-out` there, terraform would see every resource already has config and exit silently — you'd never see the messy output Chapter 2 warned about. The `generate-config-demo/` subfolder strips those cleaned configs so generate-config has work to do (and fails the way the chapter described). Local state only — the demo never runs `terraform apply`.
 
 12. **Try config generation**
 
@@ -312,7 +312,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     cat generated.tf | head -40
     ```
 
-    Notice the problems Module 2 warned about:
+    Notice the problems Chapter 2 warned about:
     - Conflicting attributes (e.g., `availability_zone` AND `availability_zone_id`)
     - Computed-only attributes that shouldn't be in config (`arn`, `owner_id`)
     - `tags_all` — a computed merge of resource tags + provider default tags
