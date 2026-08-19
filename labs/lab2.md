@@ -310,30 +310,57 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
     13. **Examine the partial output**
 
+    Don't just `head` the file — the first block you land on is one of the security-group rules, the two smallest resources here, and they show none of the problems. The **subnet** is where all of them appear at once:
+
     ```bash
-    cat generated.tf | head -40
+    sed -n '/^resource "aws_subnet"/,/^}/p' generated.tf
     ```
 
     Notice the problems Chapter 2 warned about:
-    - Conflicting attributes (e.g., `availability_zone` AND `availability_zone_id`)
-    - Computed-only attributes that shouldn't be in config (`arn`, `owner_id`)
-    - `tags_all` — a computed merge of resource tags + provider default tags
-    - Every possible attribute, not just the required ones
+    - **Conflicting attributes** — both `availability_zone` and `availability_zone_id` are emitted. That pair is mutually exclusive, and it is the exact error that stopped generation in the previous step.
+    - **`tags_all`** — a computed merge of the resource's own `tags` and the provider's `default_tags`. It exists to be read, not set.
+    - **Every settable attribute, not just the ones you need** — roughly two dozen arguments, most of them `null`.
+    - **Hardcoded IDs, not references** — `vpc_id = "vpc-0abc…"` instead of `aws_vpc.custom.id`. Nothing is wired together; Terraform has no idea that ID belongs to a resource it also manages.
 
-14. **Clean up the demo + return to the real import dir**
+    > **What generation does get right:** read-only attributes like `arn` and `owner_id` are correctly left out — Terraform only emits arguments you *could* set. The problem isn't that it dumps everything the API returns. It's that it dumps everything you *could* configure, with no opinion about what you *should*.
+
+14. **Compare the generated version against the cleaned one**
+
+    This is the point of the whole demo. `../network.tf` is the same subnet, cleaned up by hand — the work `-generate-config-out` leaves for you:
 
     ```bash
-    rm generated.tf
+    sed -n '/^resource "aws_subnet"/,/^}/p' generated.tf  > /tmp/subnet-generated.tf
+    sed -n '/^resource "aws_subnet"/,/^}/p' ../network.tf > /tmp/subnet-clean.tf
+
+    wc -l /tmp/subnet-generated.tf /tmp/subnet-clean.tf
+    diff /tmp/subnet-clean.tf /tmp/subnet-generated.tf
+    ```
+
+    Read the `diff` as a to-do list: every `>` line is something you would have had to delete or rewrite by hand before this config was usable.
+
+    Two differences matter more than the line count:
+
+    | Generated | Cleaned (`network.tf`) |
+    |---|---|
+    | `vpc_id = "vpc-0abc…"` | `vpc_id = aws_vpc.custom-vpc.id` |
+    | `availability_zone` **and** `availability_zone_id`, both literal | `availability_zone = data.aws_subnet.imported.availability_zone` |
+
+    The cleaned version keeps four arguments and expresses two of them as **references**. That's what makes the configuration a dependency graph Terraform can reason about, instead of a snapshot of IDs that happen to be true today.
+
+15. **Clean up the demo + return to the real import dir**
+
+    ```bash
+    rm generated.tf /tmp/subnet-generated.tf /tmp/subnet-clean.tf
     cd ~/Advanced_Terraform/lab2/import
     ```
 
-    > **Key takeaway:** `-generate-config-out` is a starting point for cleanup, not a finished file. For this lab, we did the cleanup work for you in `network.tf` and `security-group.tf` (which is why the demo subfolder above doesn't have them). The cleanup pattern: keep only required attributes, remove computed ones, replace hardcoded IDs with resource references.
+    > **Key takeaway:** `-generate-config-out` is a starting point for cleanup, not a finished file. For this lab, we did the cleanup work for you in `network.tf` and `security-group.tf` (which is why the demo subfolder above doesn't have them). The cleanup pattern: keep only the attributes you actually set, drop the read-only ones the provider fills in (`tags_all`), resolve conflicting pairs like `availability_zone`/`availability_zone_id` down to one, and replace hardcoded IDs with resource references.
 
 ---
 
 ## Task 5: Execute the Import (15 min)
 
-15. **Review the cleaned configuration**
+16. **Review the cleaned configuration**
 
     ```bash
     ls -la *.tf
@@ -343,7 +370,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     These match the import block addresses 1-for-1. After `terraform apply`, every line should evaluate to "matches reality."
 
-16. **Plan the import**
+17. **Plan the import**
 
     ```bash
     terraform plan
@@ -358,7 +385,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     > **If the plan shows changes:** the cleaned config doesn't match exactly what's deployed (different CIDR, different tags, missing setting). Compare carefully against the actual AWS resource and either update the config OR document the drift.
 
-17. **Apply the import**
+18. **Apply the import**
 
     ```bash
     terraform apply
@@ -375,7 +402,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     Apply complete! Resources: 9 imported, 0 added, 0 changed, 0 destroyed.
     ```
 
-18. **Verify clean plan**
+19. **Verify clean plan**
 
     ```bash
     terraform plan
@@ -388,7 +415,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     This is the moment of truth — Terraform now manages 9 previously-unmanaged resources, with zero drift.
 
-19. **List managed resources**
+20. **List managed resources**
 
     ```bash
     terraform state list
@@ -411,7 +438,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 ## Task 6: Protect Critical Resources (10 min)
 
-20. **Add `prevent_destroy` to the VPC**
+21. **Add `prevent_destroy` to the VPC**
 
     Edit `network.tf` — uncomment the `lifecycle` block on `aws_vpc.custom-vpc`:
 
@@ -424,7 +451,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
       }
     }
     ```
-    21. **Add `prevent_destroy` to the security group**
+    22. **Add `prevent_destroy` to the security group**
 
     Edit `security-group.tf` — uncomment the `lifecycle` block on `aws_security_group.allow-http-ssh`:
 
@@ -439,7 +466,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
 
     > **Why protect the SG?** Once production workloads attach to a security group, deleting it can sever connectivity for every running instance. `prevent_destroy` makes accidental removal a hard stop. (For the **state bucket** itself — which we deliberately did NOT import — the same principle applies even more strongly. That's why the state bucket stays under `lab1/state-infra`'s management with its own protections.)
-    22. **Verify the lifecycle change loads cleanly**
+    23. **Verify the lifecycle change loads cleanly**
 
     ```bash
     terraform plan
@@ -447,7 +474,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     **Expected:** `No changes. Your infrastructure matches the configuration.`
 
     > **Why no diff, and why no `terraform apply`?** `lifecycle` blocks (`prevent_destroy`, `ignore_changes`, `create_before_destroy`, `replace_triggered_by`) are **plan-time meta-arguments**, not resource attributes. Terraform reads them client-side every time it plans, but they aren't stored in state and they don't change anything on AWS. So uncommenting the `lifecycle` block produces zero diff and there's nothing to apply — the protection is active the moment the config parses. Step 23 is what actually proves it's working.
-    23. **Test the protection**
+    24. **Test the protection**
 
     ```bash
     terraform plan -destroy
@@ -473,13 +500,13 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 ## Task 7: Cleanup (5 min)
 
-24. **Remove `prevent_destroy` so cleanup can proceed**
+25. **Remove `prevent_destroy` so cleanup can proceed**
 
     For this lab cleanup only — production wouldn't do this casually.
 
     Edit `network.tf` and `security-group.tf` — comment out the `lifecycle { prevent_destroy = true }` blocks again.
 
-25. **Clean up imported infrastructure**
+26. **Clean up imported infrastructure**
 
     If you deployed the lean VPC in Task 1 Option B, destroy from `lab2/import/`:
 
@@ -491,7 +518,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     > **If you're using your existing Day 1-2 stack** (not the lean VPC), think before running destroy: this destroys the actual VPC + SG that Day 1-2 deployed. If you want to keep them for Day 4 / future labs, instead run `terraform state rm <addr>` to remove them from this lab's state without affecting AWS.
 
-26. **Remove the lab2/import state files (if not continuing)**
+27. **Remove the lab2/import state files (if not continuing)**
 
     ```bash
     # You're in ~/Advanced_Terraform/lab2/import/ on the dev workspace, after destroy completes.
@@ -520,7 +547,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 - [ ] Initialized backend with `-backend-config="bucket=..." -backend-config="region=..."`
 - [ ] Created and selected the `dev` workspace
 - [ ] Reviewed the 9 import blocks in `imports.tf`
-- [ ] Tried `-generate-config-out` and observed its limitations
+- [ ] Tried `-generate-config-out` and diffed its output against the cleaned `network.tf`
 - [ ] Ran `terraform plan` — saw "9 to import, 0 to change"
 - [ ] Ran `terraform apply` — successfully imported all 9 resources
 - [ ] Verified clean plan (No changes)
