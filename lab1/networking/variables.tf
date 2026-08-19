@@ -3,6 +3,11 @@
 variable "account" {
   description = "Your assigned IAM username (e.g., user01). Used to namespace and tag resources in the shared lab account."
   type        = string
+
+  validation {
+    condition     = can(regex("^user[0-9]{2}$", var.account))
+    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+  }
 }
 
 variable "vpc_cidr" {

@@ -14,6 +14,11 @@ variable "region" {
 variable "account" {
   description = "Your IAM user account name (e.g. user01). Used to prefix resource names. Same value as Day 1-2 var.account."
   type        = string
+
+  validation {
+    condition     = can(regex("^user[0-9]{2}$", var.account))
+    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+  }
 }
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,11 @@
 variable "account" {
   description = "Your assigned IAM username (e.g., user01)."
   type        = string
+
+  validation {
+    condition     = can(regex("^user[0-9]{2}$", var.account))
+    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+  }
 }
 
 variable "environment" {

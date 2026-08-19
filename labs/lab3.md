@@ -302,6 +302,8 @@ By the end of this lab, you will:
     | `studentXX` | your assigned student ID (e.g., `user07`) |
     | `studentXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `user07-terraform-state-ab12cd`) |
 
+    > **Miss one and the pipeline tells you.** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `studentXX` fails the **Validate** stage with a message naming the file and line — it will not quietly deploy resources called `studentXX-staging-vpc`.
+
     The places that need changing in `environments/staging/main.tf`:
 
     - `backend "s3" { bucket = "studentXX-terraform-state-SUFFIX" ... }`

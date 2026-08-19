@@ -6,11 +6,12 @@ variable "student_id" {
   type        = string
 
   validation {
-    # Accepts both Day 3 Lab 1's convention (`userNN`) and the prior `studentNN`
-    # convention. Labs in this course share identity-driven naming, so this
-    # regex must match Lab 1's `^user[0-9]{2}$` validator.
-    condition     = can(regex("^(user|student)[0-9]{2}$", var.student_id))
-    error_message = "Student ID must match 'userXX' or 'studentXX' where XX is a two-digit number (e.g., user01 or student01)."
+    # Must match Lab 1's `^user[0-9]{2}$` exactly. Allowing `studentNN` here
+    # let a student pick an ID that differs from the one Lab 1 forced, which
+    # silently breaks Lab 4 -- its dashboard widgets key off this same value
+    # and would every one of them read "No data".
+    condition     = can(regex("^user[0-9]{2}$", var.student_id))
+    error_message = "student_id must match 'userNN' with two digits - for example user07. Use the same value you used in Lab 1."
   }
 }
 
