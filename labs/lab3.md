@@ -302,7 +302,7 @@ By the end of this lab, you will:
     | `studentXX` | your assigned student ID (e.g., `user07`) |
     | `studentXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `user07-terraform-state-ab12cd`) |
 
-    > **Miss one and the pipeline tells you.** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `studentXX` fails the **Validate** stage with a message naming the file and line — it will not quietly deploy resources called `studentXX-staging-vpc`.
+    > **What if you miss one?** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `studentXX` fails the pipeline's **Validate** stage with an error naming the file and line — it won't silently deploy resources named `studentXX-staging-vpc`.
 
     The places that need changing in `environments/staging/main.tf`:
 
@@ -783,9 +783,9 @@ You have successfully:
 
 ### Pipeline Stuck on Source
 
-CodeCommit polling runs about once a minute, so give it 1-2 minutes after a push. Impatient? Click **Release change** in the pipeline console to start it immediately.
+CodeCommit polling runs about once a minute, so allow 1-2 minutes after a push — or click **Release change** in the pipeline console to start the run immediately.
 
-> **Why polling and not an event?** A CodePipeline created through the console gets an EventBridge rule for push-triggering created for it automatically. One created through the API — which is what Terraform does — does not, and the API default for `PollForSourceChanges` is `false`. `lab3/pipeline/codepipeline.tf` sets it to `"true"` explicitly so pushes trigger the pipeline without a separate EventBridge rule and its IAM role. In production you would prefer the EventBridge rule: it fires in seconds instead of up to a minute, and it does not burn a polling API call every minute forever.
+> **Why polling and not an event?** A CodePipeline created through the console gets an EventBridge rule for push-triggering created for it automatically. One created through the API — which is what Terraform does — does not, and the API default for `PollForSourceChanges` is `false`. `lab3/pipeline/codepipeline.tf` sets it to `"true"` explicitly so pushes trigger the pipeline without a separate EventBridge rule and its IAM role. In production, prefer the EventBridge rule: it fires in seconds instead of up to a minute, and it doesn't spend a polling API call every minute.
 
 ### Validate Fails
 
