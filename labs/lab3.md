@@ -111,6 +111,7 @@ By the end of this lab, you will:
     ```
 
     This is the **Golden Rule of Terraform automation**: the plan stage produces a binary plan artifact (`tfplan`), and the apply stage **executes that exact artifact** instead of re-planning. The approver reviews what `plan` produced; `apply` is then guaranteed to do exactly that — nothing else. If apply were to re-plan, state or AWS could have drifted between approval and execution, and the apply would silently run a different change than the one that was reviewed.
+    
     4. **Review IAM Roles**
 
     ```bash
