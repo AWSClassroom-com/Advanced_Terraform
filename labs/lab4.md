@@ -78,17 +78,17 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     **Filter 2: By Pipeline Role** (this only works if Lab 3's pipeline has executed)
     - Lookup attribute: **User name**
-    - Value: `studentXX-codebuild-terraform-role` *(replace `studentXX` with your assigned student ID — same value you used for `student_id` in Labs 1 and 3)*
+    - Value: `userXX-codebuild-terraform-role` *(replace `userXX` with your assigned student ID — same value you used for `student_id` in Labs 1 and 3)*
 
     **Filter 3: State Object Writes**
     - Lookup attribute: **Event name**
     - Value: `PutObject`
 
-    For Filter 3, look for events where the **Resource name** column includes your state bucket (`studentXX-terraform-state-SUFFIX`).
+    For Filter 3, look for events where the **Resource name** column includes your state bucket (`userXX-terraform-state-SUFFIX`).
 
     > **If you see no events:** CloudTrail Event history retains the most recent 90 days of management events for free, but events take **up to 15 minutes** to appear after the underlying API call. If Labs 1-3 finished within the last 15 minutes, wait and refresh.
 
-    3. **Examine an Event**
+3. **Examine an Event**
 
     Click any **PutParameter** event → **View event**.
 
@@ -96,13 +96,13 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     | Field | Example | What it tells you |
     |-------|---------|-------------------|
-    | `userIdentity.arn` | `arn:aws:sts::<account>:assumed-role/studentXX-codebuild-terraform-role/<session>` | Which CodeBuild role was active for this call |
+    | `userIdentity.arn` | `arn:aws:sts::<account>:assumed-role/userXX-codebuild-terraform-role/<session>` | Which CodeBuild role was active for this call |
     | `userAgent` | A string containing `APN/1.0 HashiCorp/1.0 Terraform/1.10.x` | Confirms a Terraform-originated operation |
     | `sourceIPAddress` | `codebuild.amazonaws.com` (when CodeBuild made the call directly) or a public IP if from a workstation | Pipeline vs. manual differentiation |
     | `eventTime` | `2026-05-03T14:33:45Z` | Exact UTC timestamp |
 
     > **Reality check on `sourceIPAddress`:** When an API call originates from inside an AWS-managed service (like CodeBuild) and is signed by an assumed role, `sourceIPAddress` typically appears as the service's hostname (e.g., `codebuild.amazonaws.com`). When the same role is assumed from a workstation, `sourceIPAddress` will be the workstation's public IP. CloudTrail doesn't lie about this — but the value depends on **where the SDK/CLI ran**, not just **which role signed**.
-    4. **Compare Pipeline vs. Console Activity**
+4. **Compare Pipeline vs. Console Activity**
 
     Find two events of the same type (`PutParameter` is a good one) and compare:
 
@@ -114,7 +114,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     > **Auditor's question answered:** *"Were all production changes made through the pipeline?"*
     >
-    > **Your answer:** *"Yes — every production-targeted event in this time window has `userIdentity.arn` matching the `studentXX-codebuild-terraform-role` and `userAgent` containing `Terraform/`."*
+    > **Your answer:** *"Yes — every production-targeted event in this time window has `userIdentity.arn` matching the `userXX-codebuild-terraform-role` and `userAgent` containing `Terraform/`."*
 
 ---
 
@@ -149,9 +149,9 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
 
     | @timestamp | eventName | userIdentity.arn | sourceIPAddress |
     |---|---|---|---|
-    | 2026-05-14 15:42:11 | PutObject | arn:aws:sts::123…:assumed-role/student07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
-    | 2026-05-14 15:42:09 | GetBucketVersioning | arn:aws:sts::123…:assumed-role/student07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
-    | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/student07 | 52.x.x.x |
+    | 2026-05-14 15:42:11 | PutObject | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
+    | 2026-05-14 15:42:09 | GetBucketVersioning | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
+    | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/user07 | 52.x.x.x |
 
     The mix is what you want to see — most rows should have a `codebuild-terraform-role` ARN (= pipeline-driven); a row with your IAM-user ARN (= someone ran `terraform apply` from their laptop, breaking the Golden Rule) is the kind of anomaly the lab's audit story is built around.
 
@@ -161,25 +161,25 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
     fields @timestamp, eventName, requestParameters.name
     | filter eventSource = "ssm.amazonaws.com"
     | filter eventName in ["PutParameter", "DeleteParameter"]
-    | filter requestParameters.name like /studentXX/
+    | filter requestParameters.name like /userXX/
     | sort @timestamp desc
     | limit 20
     ```
-    Replace `studentXX` with your assigned student ID. This narrows to SSM parameter operations on resources whose name contains your ID.
+    Replace `userXX` with your assigned student ID. This narrows to SSM parameter operations on resources whose name contains your ID.
 
     **Expected result** (sample):
 
     | @timestamp | eventName | requestParameters.name |
     |---|---|---|
-    | 2026-05-14 16:01:22 | PutParameter | /student07/lab3/db_host |
-    | 2026-05-14 16:01:18 | PutParameter | /student07/lab3/db_password |
+    | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
+    | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
 
     Empty result is also valid — it just means no SSM parameter operations have happened for your student ID during the time window you selected. Expand the time range (top right of the Logs Insights console) to confirm.
 
 9. **Save the Query**
 
     1. Click **Save**.
-    2. Name: `studentXX-terraform-activity`.
+    2. Name: `userXX-terraform-activity`.
     3. Click **Save**.
 
     Your SOC team can re-run this query anytime without remembering the syntax.
@@ -196,7 +196,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     cd ~/Advanced_Terraform/lab4/observability
     ls -la
     ```
-    11. **Review the Configuration Files**
+11. **Review the Configuration Files**
 
     ```bash
     cat dashboard.tf | head -40
@@ -216,7 +216,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
 
     > **About the "State Lockfile Activity" widget:** Lab 1 configures the S3 backend with `use_lockfile = true` (Terraform 1.10+ S3 native locking) — locks are S3 objects with a `.tflock` suffix, not DynamoDB items. The patched dashboard's lockfile widget references a CloudWatch metric `FilterId` named `lockfile-activity` — and that filter is created by **Appendix A**, not by the default `dashboard.tf`. **Until you apply Appendix A, this widget will show "No data" — that's expected, not a bug.** Appendix A adds an `aws_s3_bucket_metric` resource on your state bucket so the widget has metrics to display.
-    12. **Configure Variables**
+12. **Configure Variables**
 
     ```bash
     # You're in ~/Advanced_Terraform/lab4/observability/ from Step 10.
@@ -226,10 +226,10 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
 
     ```hcl
     region            = "us-east-2"                            # Whatever region your instructor assigned (e.g., us-east-2)
-    account           = "studentXX"                            # IMPORTANT: same value you used as student_id in Labs 1 and 3 — see naming-convention callout below
-    state_bucket_name = "studentXX-terraform-state-SUFFIX"     # Exact bucket name from Lab 1 outputs
+    account           = "userXX"                            # IMPORTANT: same value you used as student_id in Labs 1 and 3 — see naming-convention callout below
+    state_bucket_name = "userXX-terraform-state-SUFFIX"     # Exact bucket name from Lab 1 outputs
     ```
-    > **Naming convention.** Lab 4's stack declares its input variable as `account` (matching Lab 2's lean VPC pattern), but the dashboard's CloudWatch widgets reference Lab 3 resources by name — e.g., `${var.account}-terraform-validate`. Lab 3 created those resources using `var.student_id`. **For the dashboard to actually find Lab 3's CodeBuild projects and pipeline, set `account` here to the same value you used as `student_id` in Labs 1 and 3.** The example file ships with `account = "userxx"` as a placeholder — overwrite it with your `studentXX` value.
+    > **Naming convention.** Lab 4's stack declares its input variable as `account` (matching Lab 2's lean VPC pattern), but the dashboard's CloudWatch widgets reference Lab 3 resources by name — e.g., `${var.account}-terraform-validate`. Lab 3 created those resources using `var.student_id`. **For the dashboard to actually find Lab 3's CodeBuild projects and pipeline, set `account` here to the same value you used as `student_id` in Labs 1 and 3.** The example file ships with `account = "userxx"` as a placeholder — overwrite it with your `userXX` value.
 
     > **Bucket name handling:** `dashboard.tf` uses `var.state_bucket_name` directly, so the S3 widgets read from whatever bucket name you paste — Lab 1's random-suffix bucket works as-is, no edits to the dashboard code required.
 
@@ -301,7 +301,7 @@ When the auditor arrives, you can demonstrate:
 Events take **up to 15 minutes** to appear in Event history. Verify:
 - You're in `us-east-2` (or whichever region your pipeline runs in).
 - The time range filter includes when the activity occurred.
-- The filter values exactly match (e.g., `studentXX-codebuild-terraform-role` not `studentXX-codebuild`).
+- The filter values exactly match (e.g., `userXX-codebuild-terraform-role` not `userXX-codebuild`).
 
 ### Dashboard widget shows "No data"
 
@@ -310,7 +310,7 @@ In order of likelihood:
 1. **Metrics not populated yet** — wait 5-10 minutes after the source resource emits its first metric.
 2. **State Lockfile Activity widget** — empty until you apply Appendix A. The `FilterId = "lockfile-activity"` referenced by this widget depends on an `aws_s3_bucket_metric` resource that's not deployed by the default `dashboard.tf`. Apply Appendix A or accept the empty widget.
 3. **CodeBuild / Pipeline widgets** — only populate after Lab 3's pipeline has actually executed at least once. If Lab 3 was never deployed (or the pipeline never ran), these widgets will stay empty.
-4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "student07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
+4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "user07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
 5. **Wrong region** — if `dashboard.tf`'s hard-coded `us-east-2` doesn't match where your Lab 3 pipeline actually ran, every widget will be empty (the metrics live in your real region). See the Step 12 region callout.
 
     ### Logs Insights query returns nothing
@@ -324,7 +324,7 @@ In order of likelihood:
 **Q1.** How do you tell whether a Terraform-originated change came through the pipeline or from someone's laptop?
 *A: Inspect `sourceIPAddress` (`codebuild.amazonaws.com` for pipeline; user public IP for laptop) and `userIdentity.arn` (CodeBuild assumed-role for pipeline; IAM user for laptop). Both should agree — if they disagree, that's an event worth investigating.*
 
-**Q2.** A CloudTrail event shows `userIdentity.arn = arn:...:assumed-role/studentXX-codebuild-terraform-role/apply-staging`. How do you trace it back to the human who triggered the change?
+**Q2.** A CloudTrail event shows `userIdentity.arn = arn:...:assumed-role/userXX-codebuild-terraform-role/apply-staging`. How do you trace it back to the human who triggered the change?
 *A: Note the `eventTime`. In CodePipeline, find the execution that ran during that window (the `apply-staging` action specifically). From the pipeline execution, follow back to the source revision (CodeCommit commit). The commit author is the human responsible.*
 
 **Q3.** Why monitor S3 state bucket `PutRequests` on the dashboard?
@@ -335,7 +335,7 @@ In order of likelihood:
 ## Lab Completion Checklist
 
 - [ ] Navigated to CloudTrail Event history
-- [ ] Ran the three lookup filters (Event name `PutParameter`, User name `studentXX-codebuild-terraform-role`, Event name `PutObject`)
+- [ ] Ran the three lookup filters (Event name `PutParameter`, User name `userXX-codebuild-terraform-role`, Event name `PutObject`)
 - [ ] Examined a CloudTrail event JSON and identified `userIdentity.arn`, `userAgent`, `sourceIPAddress`, `eventTime`
 - [ ] Compared a pipeline event vs. a console/CLI event side by side
 - [ ] Ran the two Logs Insights queries (or skipped Task 2 with the documented reason)
@@ -372,9 +372,9 @@ cd ~/Advanced_Terraform/lab1/networking && terraform destroy
 ```
 ```bash
 # Lab 1 — the state bucket last. Empty it first; versioned S3 buckets refuse delete with objects in them.
-aws s3 rm s3://studentXX-terraform-state-SUFFIX --recursive
-aws s3api delete-objects --bucket studentXX-terraform-state-SUFFIX \
-    --delete "$(aws s3api list-object-versions --bucket studentXX-terraform-state-SUFFIX \
+aws s3 rm s3://userXX-terraform-state-SUFFIX --recursive
+aws s3api delete-objects --bucket userXX-terraform-state-SUFFIX \
+    --delete "$(aws s3api list-object-versions --bucket userXX-terraform-state-SUFFIX \
         --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
 cd ~/Advanced_Terraform/lab1/state-infra && terraform destroy
 ```

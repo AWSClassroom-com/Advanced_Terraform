@@ -10,5 +10,5 @@
 # "No data".
 
 region            = ""                                  # Your assigned region (e.g. us-east-2)
-account           = "studentXX"                         # SAME as student_id in Labs 1 + 3 (e.g. user07)
-state_bucket_name = "studentXX-terraform-state-SUFFIX"  # Exact bucket name from Lab 1 `terraform output`
+account           = "userXX"                         # SAME as student_id in Labs 1 + 3 (e.g. user07)
+state_bucket_name = "userXX-terraform-state-SUFFIX"  # Exact bucket name from Lab 1 `terraform output`

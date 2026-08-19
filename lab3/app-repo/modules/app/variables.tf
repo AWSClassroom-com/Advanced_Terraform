@@ -2,12 +2,12 @@
 # Inputs to the shared application module.
 
 variable "student_id" {
-  description = "Student identifier (e.g. student07). Used to namespace every resource so 25 students can deploy in parallel without name collisions."
+  description = "Your assigned IAM username (e.g. user07), same value as Lab 1. Used to namespace every resource so 25 students can deploy in parallel without name collisions."
   type        = string
 
   validation {
     condition     = can(regex("^user[0-9]{2}$", var.student_id))
-    error_message = "student_id must match 'userNN' with two digits - for example user07. Replace the studentXX placeholder with your assigned IAM username, the same value you used in Lab 1."
+    error_message = "student_id must match 'userNN' with two digits - for example user07. Replace the userXX placeholder with your assigned IAM username, the same value you used in Lab 1."
   }
 }
 

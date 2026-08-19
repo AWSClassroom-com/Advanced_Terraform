@@ -70,7 +70,7 @@ In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's
     git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
     cd Advanced_Terraform/lab1/state-infra
     ```
-    2. **Review the Backend Configuration (do not edit yet)**
+2. **Review the Backend Configuration (do not edit yet)**
 
     Open `providers.tf` and read the backend block. **It's commented out on purpose** — the lab is self-contained:
 
@@ -109,7 +109,7 @@ In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's
     ```bash
     terraform init
     ```
-    4. **Explore the Default Workspace**
+4. **Explore the Default Workspace**
 
     Every Terraform configuration starts with a `default` workspace:
 
@@ -254,7 +254,7 @@ The checkout team's near-miss happened because a junior engineer thought they we
     terraform workspace new prod
     terraform workspace select dev
     ```
-    12. **Configure Your Variables**
+12. **Configure Your Variables**
 
     ```bash
     cp terraform.tfvars.example terraform.tfvars
@@ -731,7 +731,7 @@ Now you'll implement the same deployment using a directory structure to compare 
       })
     }
     ```
-    28. **Review an Environment Directory**
+28. **Review an Environment Directory**
 
     ```bash
     cat dev/main.tf
@@ -821,7 +821,7 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     terraform state rm aws_s3_bucket_public_access_block.terraform_state
     terraform state rm random_string.suffix
     ```
-    32. **Destroy the rest**
+32. **Destroy the rest**
 
     ```bash
     terraform destroy -auto-approve
@@ -850,7 +850,7 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     terraform workspace delete prod    2>/dev/null || echo "(prod not present)"
 
     ```
-    35. **Leave the bootstrap bucket in place**
+35. **Leave the bootstrap bucket in place**
 
     The bucket and its versioned state files still exist in S3 from Step 31's `state rm` — and that's intentional. **Do not delete it.** Labs 2-4 reference this same bucket, and in any real environment a state bucket is treated as durable, versioned, audit-grade storage that you never tear down as part of routine teardown.
 

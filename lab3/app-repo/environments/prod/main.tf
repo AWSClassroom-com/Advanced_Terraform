@@ -8,7 +8,7 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "studentXX-terraform-state-SUFFIX" # replace before first commit
+    bucket       = "userXX-terraform-state-SUFFIX" # replace before first commit
     key          = "pipeline/prod/terraform.tfstate"
     region       = "us-east-2" # bucket region — bucket itself lives in staging region
     encrypt      = true
@@ -28,7 +28,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student     = "studentXX" # replace before first commit
+      Student     = "userXX" # replace before first commit
       Environment = "prod"
       ManagedBy   = "Terraform-Pipeline"
     }
@@ -37,7 +37,7 @@ provider "aws" {
 
 module "app" {
   source      = "../../modules/app"
-  student_id  = "studentXX" # replace before first commit
+  student_id  = "userXX" # replace before first commit
   environment = "prod"
 }
 

@@ -194,7 +194,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     ```bash
     cd ~/Advanced_Terraform/lab2/import
     ```
-    7. **Configure variables**
+7. **Configure variables**
 
     ```bash
     cp terraform.tfvars.example terraform.tfvars
@@ -271,7 +271,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     You'll see 9 import blocks — 5 for the VPC stack, 4 for the security group + its 3 modern rules. The `to` attribute names a Terraform resource address; the `id` attribute supplies the AWS-side identifier.
 
     > **Why import blocks beat `terraform import` (the imperative command)?** Import blocks live in your `.tf` files, get version-controlled, get reviewed in PRs, and run as part of `terraform plan`/`apply` — same workflow as everything else. The legacy `terraform import <addr> <id>` command is one-shot and leaves no record. Use blocks for anything that should be reproducible.
-    11. **Notice the compound ID for route table association**
+11. **Notice the compound ID for route table association**
 
     In `imports.tf`:
 
@@ -486,7 +486,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
       }
     }
     ```
-    22. **Add `prevent_destroy` to the security group**
+22. **Add `prevent_destroy` to the security group**
 
     Edit `security-group.tf` — same one-line change: uncomment `prevent_destroy` inside the `lifecycle` block on `aws_security_group.allow-http-ssh`:
 
@@ -501,7 +501,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
 
     > **Why protect the SG?** Once production workloads attach to a security group, deleting it can sever connectivity for every running instance. `prevent_destroy` makes accidental removal a hard stop. (For the **state bucket** itself — which we deliberately did NOT import — the same principle applies even more strongly. That's why the state bucket stays under `lab1/state-infra`'s management with its own protections.)
-    23. **Verify the lifecycle change loads cleanly**
+23. **Verify the lifecycle change loads cleanly**
 
     ```bash
     terraform plan
@@ -509,7 +509,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     **Expected:** `No changes. Your infrastructure matches the configuration.`
 
     > **Why no diff, and why no `terraform apply`?** `lifecycle` blocks (`prevent_destroy`, `ignore_changes`, `create_before_destroy`, `replace_triggered_by`) are **plan-time meta-arguments**, not resource attributes. Terraform reads them client-side every time it plans, but they aren't stored in state and they don't change anything on AWS. So uncommenting the `lifecycle` block produces zero diff and there's nothing to apply — the protection is active the moment the config parses. Step 24 is what actually proves it's working.
-    24. **Test the protection**
+24. **Test the protection**
 
     ```bash
     terraform plan -destroy
