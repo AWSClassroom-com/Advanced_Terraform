@@ -828,15 +828,15 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     ```
     This destroys what's left in state: `null_resource.workspace_guard`, `time_sleep.locking_demo`, `aws_ssm_parameter.lock_demo`, and `aws_ssm_parameter.app_config` (if Part D was active). The bucket is untouched.
 
-33. **Destroy networking (optional)**
-
-    If you're not continuing to Lab 2 today:
+33. **Destroy networking**
 
     ```bash
     cd ~/Advanced_Terraform/lab1/networking
     terraform destroy -auto-approve
     ```
-    **Keep the networking state if continuing to Lab 2** — Lab 2's import flow expects this VPC and SG to exist.
+    Part D and the `lab1/directories` comparison are the only things that read this state, and both are finished — so there is nothing left to keep it for.
+
+    > **Doesn't Lab 2 need this VPC?** No. Lab 2 imports either your Day 1-2 VPC and `allow-http-ssh` security group, or the lean stack it deploys itself in Task 1 Option B — both at `192.168.0.0/20`. This networking VPC is `10.20.0.0/16`, and its security group uses inline `ingress`/`egress` blocks rather than the separate rule resources Lab 2 imports, so it can't serve as an import source. Destroy it here and reclaim the VPC quota.
 
 34. **Clean up workspaces**
 

@@ -553,13 +553,15 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     > **If you're using your existing Day 1-2 stack** (not the lean VPC), think before running destroy: this destroys the actual VPC + SG that Day 1-2 deployed. If you want to keep them for Day 4 / future labs, instead run `terraform state rm <addr>` to remove them from this lab's state without affecting AWS.
 
-27. **Remove the lab2/import state files (if not continuing)**
+27. **Remove the lab2/import workspace**
 
     ```bash
     # You're in ~/Advanced_Terraform/lab2/import/ on the dev workspace, after destroy completes.
     terraform workspace select default
     terraform workspace delete dev
     ```
+
+    > **Does this affect Labs 3 and 4?** No. Every lab keeps its state under its own key in the shared bucket — Lab 2 uses `imported/`, Lab 3 uses `pipeline/`, Lab 4 uses `observability/`. Deleting the `dev` workspace here removes Lab 2's state file only. The bucket and the other labs' state are untouched, and neither Lab 3 nor Lab 4 reads anything Lab 2 produced.
     > **If you used Option B (lean VPC)**, also clean up the lean stack's local state. Step 26's `terraform destroy` (from `lab2/import/`) already removed the actual AWS resources, but `lab2/day1-vpc-lean/terraform.tfstate` still thinks it owns them — dangling references. The cleanest way to clear that:
     >
     > ```bash

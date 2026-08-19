@@ -356,16 +356,22 @@ cd ~/Advanced_Terraform/lab4/observability && terraform destroy
 ```
 ```bash
 # Lab 3 — destroy app-repo environments first if they're still up
-cd ~/Advanced_Terraform/webapp-repo/environments/staging && terraform destroy
-cd ~/Advanced_Terraform/webapp-repo/environments/prod && terraform destroy
+cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging && terraform destroy
+cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod && terraform destroy
 cd ~/Advanced_Terraform/lab3/pipeline && terraform destroy
 ```
 ```bash
-# Lab 2
+# Lab 2 — skip if you already ran Lab 2's own cleanup (Steps 26-27)
 cd ~/Advanced_Terraform/lab2/import && terraform destroy
 ```
 ```bash
-# Lab 1 — empty the bucket first (versioned S3 buckets refuse delete with objects in them)
+# Lab 1 — the networking and directories stacks, if you skipped Lab 1's Steps 32-34
+cd ~/Advanced_Terraform/lab1/directories/dev && terraform destroy
+cd ~/Advanced_Terraform/lab1/directories/staging && terraform destroy
+cd ~/Advanced_Terraform/lab1/networking && terraform destroy
+```
+```bash
+# Lab 1 — the state bucket last. Empty it first; versioned S3 buckets refuse delete with objects in them.
 aws s3 rm s3://studentXX-terraform-state-SUFFIX --recursive
 aws s3api delete-objects --bucket studentXX-terraform-state-SUFFIX \
     --delete "$(aws s3api list-object-versions --bucket studentXX-terraform-state-SUFFIX \
