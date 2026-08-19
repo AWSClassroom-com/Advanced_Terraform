@@ -73,6 +73,20 @@ resource "aws_iam_role_policy" "codebuild" {
           "ssm:*"
         ]
         Resource = "*"
+      },
+      {
+        # Task 5 adds an `env: secrets-manager:` block to the apply buildspec.
+        # CodeBuild resolves that with its OWN service role -- not the student's
+        # IAM policy -- so without this the build fails during env resolution,
+        # before any command runs. The matching `env: parameter-store:` lookup
+        # is already covered by ssm:* above.
+        Sid    = "SecretsManagerForBuildspecEnv"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "*"
       }
     ]
   })

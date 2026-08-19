@@ -18,8 +18,8 @@ terraform {
   # -----------------------------------------------------------------
   # backend "s3" {
   #   bucket       = "userXX-terraform-state-SUFFIX"  # <- Replace with state_bucket_name
-  #   key          = "platform/state-infra/terraform.tfstate"
-  #   region       = "us-east-1"
+  #   key          = "lab1-app/terraform.tfstate"
+  #   region       = "us-east-2"
   #   encrypt      = true
   #   use_lockfile = true  # Uses S3 native locking instead of DynamoDB
   # }
@@ -43,7 +43,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-2"
 
   default_tags {
     tags = {

@@ -8,7 +8,7 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "tf-state-userxx-XXXXXXXX"          # REPLACE: your bucket from Day 2
+    bucket       = "userXX-terraform-state-SUFFIX"     # REPLACE: state_bucket_name output from lab1/state-infra
     key          = "directories/dev/terraform.tfstate" # Path includes env name
     region       = "us-east-2"                         # change to your assigned region if not us-east-2
     encrypt      = true

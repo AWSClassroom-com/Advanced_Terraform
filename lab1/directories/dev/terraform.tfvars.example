@@ -3,4 +3,4 @@
 # Copy to terraform.tfvars and edit.
 
 account        = "userxx"                              # REPLACE
-state_bucket_name = "tf-state-userxx-XXXXXXXX"     # REPLACE: same bucket from Day 2
+state_bucket_name = "userXX-terraform-state-SUFFIX"     # REPLACE: state_bucket_name output from lab1/state-infra

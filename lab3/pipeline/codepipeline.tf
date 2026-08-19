@@ -29,6 +29,12 @@ resource "aws_codepipeline" "terraform" {
       configuration = {
         RepositoryName = aws_codecommit_repository.terraform.repository_name
         BranchName     = "main"
+
+        # Without this, a CodePipeline created via API/Terraform never fires on
+        # a push: the API default is false, and only the *console* creates the
+        # EventBridge rule for you. Polling checks roughly once a minute, which
+        # matches the "triggers automatically within 1-2 minutes" step in the lab.
+        PollForSourceChanges = "true"
       }
     }
   }
@@ -103,7 +109,7 @@ resource "aws_codepipeline" "terraform" {
   # =========================================================================
   # Stage 5: Apply Staging
   # =========================================================================
-  # Applies the approved plan to staging environment (us-east-1)
+  # Applies the approved plan to staging environment (us-east-2)
 
   stage {
     name = "Apply-Staging"

@@ -5,17 +5,18 @@
 # the terraform_remote_state data source — that's the cross-state dependency
 # pattern Lab 1 Part C teaches.
 #
-# Students must edit the bucket value to match the bucket they created in
-# Day 2 Lab 3 (or via Lab 1's setup). Terraform backend blocks cannot use
-# variables — the bucket name has to be a literal string here.
+# Students must edit the bucket value to match the bucket lab1/state-infra
+# created in Part A (`terraform output state_bucket_name`) — NOT a Day 1-2
+# bucket. Terraform backend blocks cannot use variables, so the bucket name
+# has to be a literal string here.
 
 terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "tf-state-userxx-XXXXXXXX"     # REPLACE: your bucket from Day 2
-    key          = "networking/terraform.tfstate" # No env:/ prefix — networking state is shared
-    region       = "us-east-2"                    # change to your assigned region if not us-east-2
+    bucket       = "userXX-terraform-state-SUFFIX" # REPLACE: state_bucket_name output from lab1/state-infra
+    key          = "networking/terraform.tfstate"  # No env:/ prefix — networking state is shared
+    region       = "us-east-2"                     # change to your assigned region if not us-east-2
     encrypt      = true
     use_lockfile = true # Terraform 1.10+ S3 native locking
   }

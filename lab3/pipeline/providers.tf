@@ -8,7 +8,7 @@ terraform {
   backend "s3" {
     bucket       = "studentXX-terraform-state-SUFFIX" # <- Replace with your state_bucket_name from Lab 1
     key          = "pipeline/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "us-east-2"
     encrypt      = true
     use_lockfile = true # Uses S3 native locking instead of DynamoDB
   }
@@ -26,7 +26,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-2"
 
   default_tags {
     tags = {

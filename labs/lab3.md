@@ -83,7 +83,7 @@ By the end of this lab, you will:
 
     **Notice the 8-stage flow:**
 
-    1. **Source** - Triggers on CodeCommit push
+    1. **Source** - Polls CodeCommit for pushes to `main` (`PollForSourceChanges = "true"`)
     2. **Validate** - `terraform fmt -check` + `terraform validate`
     3. **Plan-Staging** - Plans for us-east-2, saves artifact
     4. **Approve-Staging** - Manual approval gate
@@ -425,17 +425,23 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Parameter Store is good for environment-specific config — region, account number, feature-flag toggles, hostnames. Values are visible to anyone with `ssm:GetParameter` and appear in CloudTrail.
 
+    > **Set `$STUDENT` first — do not use `$USER`.** On the lab EC2 box `$USER` is `ec2-user`, not your assigned ID. Step 23 wires the buildspec to `/studentXX/lab3/...`, so these paths must match exactly or CodeBuild cannot resolve the value at build start:
+    >
+    > ```bash
+    > export STUDENT="studentXX"   # your assigned ID — same value as student_id in Step 5
+    > ```
+
     ```bash
     aws ssm put-parameter \
-        --name "/${USER}/lab3/db_host" \
+        --name "/${STUDENT}/lab3/db_host" \
         --type "String" \
-        --value "rds.${USER}.example.com" \
+        --value "rds.${STUDENT}.example.com" \
         --overwrite
     ```
     Verify:
 
     ```bash
-    aws ssm get-parameter --name "/${USER}/lab3/db_host" --query 'Parameter.Value' --output text
+    aws ssm get-parameter --name "/${STUDENT}/lab3/db_host" --query 'Parameter.Value' --output text
     ```
     22. **Store a credential in Secrets Manager**
 
@@ -443,55 +449,82 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     ```bash
     aws secretsmanager create-secret \
-        --name "${USER}/lab3/db_password" \
+        --name "${STUDENT}/lab3/db_password" \
         --description "Lab 3 demo credential — delete at end of lab" \
         --secret-string "demo-password-do-not-reuse"
     ```
     > **Cost note.** Secrets Manager charges $0.40/secret/month plus $0.05 per 10,000 API calls. For a lab account with 25 students × 1 secret = $10/month if forgotten — destroy at end of lab (Cleanup task).
 
-23. **Update the buildspec to pull both values**
+23. **Update the plan-staging buildspec to pull both values**
 
-    The buildspec for the apply stage lives inline in `lab3/pipeline/codebuild.tf`. Open it and add an `env:` block at the top of the buildspec for the apply phase:
+    > **Why the *plan* stage, not the apply stage?** The apply stage runs `terraform apply tfplan` against a **saved plan file**, and Terraform refuses to accept variables alongside a saved plan (`Error: Can't set variables when applying a saved plan file`) — a saved plan already contains the variable values that were set when it was created. So the secrets have to be resolved at **plan** time and baked into `tfplan`. That is also the safer design: the values the approver reviews in the plan are exactly the values that get applied.
+
+    The buildspecs live inline in `lab3/pipeline/codebuild.tf`. Find the `plan_staging` project and add an `env:` block directly under `version: 0.2`, above `phases:`:
 
     ```yaml
+    version: 0.2
     env:
       parameter-store:
         DB_HOST: /studentXX/lab3/db_host
       secrets-manager:
         DB_PASSWORD: studentXX/lab3/db_password
+    phases:
+      ...
     ```
-    Replace `studentXX` with your assigned student ID — the same value you used for `student_id` in Step 5. CodeBuild fetches both values at build start; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
+    Replace `studentXX` with your assigned student ID — the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
 
-24. **Wire the values into terraform via -var**
+    > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue` — if you scope it down later, the `env:` block is the thing that breaks first, and it fails *before* any build command runs.
 
-    Still in `lab3/pipeline/codebuild.tf`, find the apply-stage build commands and pass the env vars through:
+24. **Export the values as `TF_VAR_*` so the plan picks them up**
+
+    Still in the `plan_staging` buildspec, set the two Terraform variables from the CodeBuild env vars just before the plan runs:
 
     ```yaml
     phases:
       build:
         commands:
-          - terraform apply -auto-approve \
-              -var="db_host=$DB_HOST" \
-              -var="db_password=$DB_PASSWORD" \
-              tfplan
+          - echo "=== Planning staging environment ==="
+          - cd environments/staging
+          - export TF_VAR_db_host="$DB_HOST"
+          - export TF_VAR_db_password="$DB_PASSWORD"
+          - terraform init
+          - terraform plan -out=tfplan
+          - echo "=== Staging plan complete ==="
     ```
-    Then add the matching variable declarations to your `webapp-repo`'s `variables.tf`:
+    Terraform reads any `TF_VAR_<name>` environment variable as the value for `variable "<name>"`. **Leave the apply-stage buildspec exactly as it is** — `terraform apply -auto-approve tfplan` already carries these values inside the plan file.
+
+25. **Declare and consume the variables in the staging wrapper**
+
+    The variables have to be declared in the directory Terraform actually runs in — that's `environments/staging/`, not the repo root. Open `environments/staging/main.tf` in your `webapp-repo` clone and add:
 
     ```hcl
     variable "db_host" {
       description = "Database hostname injected from Parameter Store via the pipeline."
       type        = string
+      default     = "unset"
     }
 
     variable "db_password" {
       description = "Database password injected from Secrets Manager via the pipeline."
       type        = string
       sensitive   = true
+      default     = "unset"
+    }
+
+    # Proves the injection worked: check this parameter in the console after the
+    # pipeline runs and you'll see the Parameter Store value that CodeBuild fetched.
+    resource "aws_ssm_parameter" "db_config" {
+      name  = "/${var.db_host == "unset" ? "unset" : "studentXX"}/staging/db-endpoint"
+      type  = "String"
+      value = var.db_host
     }
     ```
-    The `sensitive = true` flag prevents the value from appearing in `terraform plan` output or being written to state in plaintext outputs.
+    Replace `studentXX` with your student ID. Two things to notice:
 
-25. **Re-apply the pipeline and push the buildspec changes**
+    - **`sensitive = true`** keeps `db_password` out of `terraform plan` output and out of any plaintext output — Terraform prints `(sensitive value)` instead.
+    - **The `default = "unset"`** matters. Plan-Prod and the Validate stage run against code that has no `TF_VAR_db_*` set; without defaults those stages would fail with "No value for required variable."
+
+26. **Re-apply the pipeline and push the wrapper changes**
 
     Apply the updated CodeBuild project so the new buildspec takes effect:
 
@@ -499,30 +532,35 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     cd ~/Advanced_Terraform/lab3/pipeline
     terraform apply
     ```
-    Then commit and push your `webapp-repo` updates so the pipeline runs against the new variable declarations:
+    Then commit and push your `webapp-repo` updates:
 
     ```bash
     cd ~/Advanced_Terraform/lab3/webapp-repo
-    git add variables.tf
-    git commit -m "Add db_host and db_password variables for pipeline-injected values"
-    git push
+    git add environments/staging/main.tf
+    git commit -m "Consume pipeline-injected db_host and db_password in staging"
+    git push origin main
     ```
-    26. **Verify in build logs**
+    27. **Verify in the Plan-Staging build log**
 
-    Open the CodeBuild console for your apply project. In the build log:
+    Open the CodeBuild console for your **plan-staging** project (not apply — that's where the `env:` block now lives). In the build log:
 
     - `[Container] env DB_HOST = rds.studentXX.example.com` — the Parameter Store value, visible
     - `[Container] env DB_PASSWORD = ***` — Secrets Manager values are masked, never logged
 
-    The `terraform apply` command shows `db_host = "rds.studentXX.example.com"` in the plan but `db_password = (sensitive value)` because of the `sensitive = true` flag.
+    The `terraform plan` output shows `db_host = "rds.studentXX.example.com"` but `db_password = (sensitive value)` because of the `sensitive = true` flag. After the pipeline finishes, confirm the parameter the plan created:
 
-    > **In production, scope tighter.** This lab uses `secretsmanager:*` and `ssm:*` from the broad lab IAM policy. For real workloads, give the CodeBuild role `secretsmanager:GetSecretValue` only on the specific secret ARN, and `ssm:GetParameter*` only on the specific parameter path prefix. Use `aws:ResourceTag` condition keys to limit by environment.
+    ```bash
+    aws ssm get-parameter --name "/${STUDENT}/staging/db-endpoint" \
+        --query 'Parameter.Value' --output text --region us-east-2
+    ```
+
+    > **In production, scope tighter.** The CodeBuild role in `lab3/pipeline/iam.tf` grants `ssm:*` and `secretsmanager:GetSecretValue` on `*`. For real workloads, scope `secretsmanager:GetSecretValue` to the specific secret ARN and `ssm:GetParameter*` to the specific parameter path prefix. Use `aws:ResourceTag` condition keys to limit by environment.
 
 ---
 
 ## Task 6: Promote to Production (10 min)
 
-27. **Review Production Plan**
+28. **Review Production Plan**
 
     After staging apply completes, the pipeline automatically runs **Plan-Prod**:
 
@@ -530,7 +568,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     2. View the plan in CodeBuild logs
     3. Verify it's creating the same 7 resources in **us-west-2**
 
-28. **Approve Production Deployment**
+29. **Approve Production Deployment**
 
     When pipeline reaches **Approve-Prod**:
 
@@ -540,7 +578,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Watch **Apply-Prod** execute.
 
-29. **Verify Production Deployment**
+30. **Verify Production Deployment**
 
     Same flow as Step 20, but reading from the prod state key (`pipeline/prod/...`):
 
@@ -568,7 +606,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 7: Verify in AWS Console (5 min)
 
-30. **Check Your Resources**
+31. **Check Your Resources**
 
     **Staging (us-east-2):**
 
@@ -589,7 +627,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 > **Skip this task if you're running short on time** — proceed directly to Task 9 (Cleanup). The main lab is complete after Task 7. This bonus task demonstrates that swapping the deployed *payload* (EC2 → Lambda + API Gateway) requires changing **one line per environment** when the modules share an interface — and it gives students who finished early a tangible "modern serverless" experience to compare against the EC2 path.
 
-31. **Swap both environments to the serverless module**
+32. **Swap both environments to the serverless module**
 
     The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`student_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
 
@@ -611,7 +649,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Then make the same change in `environments/prod/main.tf`.
 
-32. **Commit, push, and verify the serverless deploy**
+33. **Commit, push, and verify the serverless deploy**
 
     ```bash
     git add environments/staging/main.tf environments/prod/main.tf
@@ -648,9 +686,9 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 9: Cleanup Through Pipeline (Optional but Recommended)
 
-33. **Trigger Destroy**
+34. **Trigger Destroy**
 
-    The pipeline includes destroy stages that can be manually triggered.
+    The pipeline has no destroy stage — its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
 
     **Option A: Manual destroy from CLI**
 
@@ -669,7 +707,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Edit the Terraform code to remove resources, push, and let pipeline apply the changes.
 
-34. **Verify Cleanup**
+35. **Verify Cleanup**
 
     Verify no instances remain (regardless of whether you ran the bonus or stayed on EC2):
 
@@ -694,6 +732,17 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     aws lambda list-functions --region us-west-2 --query 'Functions[?starts_with(FunctionName, `studentXX-`)].FunctionName' --output text
     ```
     Both should return empty after destroy.
+
+36. **Delete the Task 5 secret and parameter**
+
+    These were created by CLI, not Terraform, so `terraform destroy` does not remove them. Secrets Manager bills $0.40/secret/month until the deletion window closes.
+
+    ```bash
+    # $STUDENT was exported in Step 21
+    aws secretsmanager delete-secret         --secret-id "${STUDENT}/lab3/db_password"         --force-delete-without-recovery
+
+    aws ssm delete-parameter --name "/${STUDENT}/lab3/db_host"
+    ```
 
 ---
 
@@ -732,7 +781,9 @@ You have successfully:
 
 ### Pipeline Stuck on Source
 
-CodeCommit polling can take 1-2 minutes. Or manually click **Release change**.
+CodeCommit polling runs about once a minute, so give it 1-2 minutes after a push. Impatient? Click **Release change** in the pipeline console to start it immediately.
+
+> **Why polling and not an event?** A CodePipeline created through the console gets an EventBridge rule for push-triggering created for it automatically. One created through the API — which is what Terraform does — does not, and the API default for `PollForSourceChanges` is `false`. `lab3/pipeline/codepipeline.tf` sets it to `"true"` explicitly so pushes trigger the pipeline without a separate EventBridge rule and its IAM role. In production you would prefer the EventBridge rule: it fires in seconds instead of up to a minute, and it does not burn a polling API call every minute forever.
 
 ### Validate Fails
 
