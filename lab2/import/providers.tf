@@ -1,10 +1,11 @@
 # lab2-import/providers.tf
 #
-# Lab 2 uses the SAME state bucket as Lab 1 (Day 2 Lab 3's bucket) but
-# a SEPARATE state path under `imported/`. Workspaces (dev/staging/prod)
-# follow Lab 1's pattern — the import happens in the dev workspace.
+# Lab 2 uses the SAME state bucket Lab 1 created (lab1/state-infra's
+# `terraform output state_bucket_name`) but a SEPARATE state path under
+# `imported/`. Workspaces (dev/staging/prod) follow Lab 1's pattern — the
+# import happens in the dev workspace.
 #
-# Day 1-2 backend pattern: bucket and region are passed at init time via
+# Backend pattern: bucket and region are passed at init time via
 # `-backend-config="bucket=..."` and `-backend-config="region=..."` rather
 # than hardcoded here. We follow that convention.
 

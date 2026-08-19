@@ -23,7 +23,7 @@ In Day 1-2 Lab 3, you deployed a VPC stack and an `allow-http-ssh` security grou
 
 Today you'll practice the **import workflow** by bringing those same resources into a **separate, fresh Terraform configuration** — under your **dev workspace** (the workspace pattern from Lab 1). This simulates the real-world scenario where you discover existing infrastructure and want to manage it with a fresh, well-organized config rather than the original implementation.
 
-> **Why no S3 bucket?** The S3 state bucket is **already** managed by `module.s3_bucket` in Day 1-2's state. Importing it into a second state would create dual-management — both states would think they own the bucket, and the next `terraform apply` from either side could break the other. Plus, **you generally don't experiment with state buckets in import labs** — destroying or accidentally drifting your state bucket means losing access to all your Day 3 work. We import the VPC + SG stack only.
+> **Why no S3 bucket?** The S3 state bucket is **already** managed by `lab1/state-infra`'s state. Importing it into a second state would create dual-management — both states would think they own the bucket, and the next `terraform apply` from either side could break the other. Plus, **you generally don't experiment with state buckets in import labs** — destroying or accidentally drifting your state bucket means losing access to all your Day 3 work. We import the VPC + SG stack only.
 
 ### Learning Objectives
 
@@ -64,7 +64,7 @@ The VPC stack imports in dependency order (VPC → subnet → IGW → route tabl
 
 **What's intentionally NOT here:**
 - **NAT Gateway** — Day 1-2 deploys it (Lab 3 Task 2) but we exclude it from imports because it's expensive (~$1/day) and not needed for this lab's lesson.
-- **S3 state bucket** — already managed by Day 1-2's `module.s3_bucket`. See "Why no S3?" in the narrative above.
+- **S3 state bucket** — already managed by `lab1/state-infra`. See "Why no S3?" in the narrative above.
 - **ALB / ALB SG / ASG / launch template** — Lab 5 territory; not relevant to the import lesson.
 - **`for_each` subnets / private subnets** — Lab 4+ refactor. The 9-resource scope keeps the import addresses clean.
 
@@ -77,6 +77,8 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
 > **Option A** — *5 min* — your Day 1-2 VPC and `userxx-allow-http-ssh` security group are still deployed.
 >
 > **Option B** — *10 min* — you don't have Day 1-2 resources running. Deploy the lean VPC stack provided in this repo, then read its outputs.
+>
+> **If your AWS account was provisioned fresh for Day 3, use Option B.** There are no Day 1-2 VPC or security-group resources to find, and the only state bucket in the account is the one Lab 1 created.
 
 > **Before you start — set two env vars in your shell.** The CLI commands below filter on your IAM username and your assigned deployment region. Don't rely on `$USER` from the shell — on lab VMs that's typically `ec2-user`/`cloudshell-user`, not your IAM username. Set both explicitly:
 >
@@ -92,13 +94,13 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
 1. **Verify the stack still exists**
 
     ```bash
-    aws s3 ls | grep tf-state
+    aws s3 ls | grep "${STUDENT}-terraform-state"
     aws ec2 describe-vpcs --region "$DEPLOY_REGION" \
         --filters "Name=tag:Name,Values=*${STUDENT}*" \
         --query 'Vpcs[].{VpcId:VpcId,CIDR:CidrBlock,Tags:Tags}' \
         --output table
     ```
-    You should see your `tf-state-${STUDENT}-…` bucket (output of `aws s3 ls`) and a VPC tagged with your username. **Note both the state bucket name AND which region it lives in** — these may not be the same region as your VPC. You'll pass both at `terraform init` time in Task 2.
+    You should see your `${STUDENT}-terraform-state-…` bucket from Lab 1 (output of `aws s3 ls`) and a VPC tagged with your username. **Note both the state bucket name AND which region it lives in.** You'll pass both at `terraform init` time in Task 2.
 
 2. **Capture the VPC stack IDs (vpc, subnet, IGW, route table)**
 
@@ -175,13 +177,13 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     - **VPC stack** — `vpc_id`, `subnet_id`, `internet_gateway_id`, `route_table_id`
     - **Security group + rules** — `security_group_id`, `sg_rule_http_id`, `sg_rule_ssh_id`, `sg_rule_egress_id`
 
-    Also capture your **state bucket name and its region** (from Day 2 Lab 3) — you'll pass both at `terraform init` time in Task 2:
+    Also capture your **state bucket name and its region** — this is the bucket **Lab 1 created** (`terraform output state_bucket_name` in `lab1/state-infra`). You'll pass both at `terraform init` time in Task 2:
 
     ```bash
-    aws s3 ls | grep "tf-state-${STUDENT}"
+    aws s3 ls | grep "${STUDENT}-terraform-state"
     aws s3api get-bucket-location --bucket "<your-bucket-name>" --query 'LocationConstraint' --output text
     ```
-    The bucket name looks like `tf-state-user07-AB12CD34`. The bucket's region **may or may not match `$DEPLOY_REGION`** — Lab 1 / Day 2 Lab 3 may have created your bucket in a different region than where your VPC lives.
+    The bucket name looks like `user07-terraform-state-x8k2m4`. The bucket's region **may or may not match `$DEPLOY_REGION`** — the state bucket and the resources you are importing are independent of each other.
 
 ---
 
@@ -217,7 +219,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     sg_rule_ssh_id      = "sgr-0xxxxxxxxxxxxxxxx"
     sg_rule_egress_id   = "sgr-0xxxxxxxxxxxxxxxx"
     ```
-    > **Two regions, kept separate.** The `region` in this tfvars file configures the AWS *provider* — it tells Terraform "where to find the resources I'm importing." The `region` you'll pass at `terraform init` time (next step) is a different setting — it tells Terraform's *S3 backend* where to find the state bucket. **These can be different.** If your state bucket is in `us-east-2` but your VPC is in `us-west-2`, that's fine and supported — you'd put `us-west-2` here in tfvars and pass `us-east-2` at init time.
+    > **Two regions, kept separate.** The `region` in this tfvars file configures the AWS *provider* — it tells Terraform "where to find the resources I'm importing." The `region` you'll pass at `terraform init` time (next step) is a different setting — it tells Terraform's *S3 backend* where to find the state bucket. **These can be different.** If your Lab 1 state bucket is in `us-east-2` but your VPC is in `us-west-2`, that's fine and supported — you'd put `us-west-2` here in tfvars and pass `us-east-2` at init time.
 
 8. **Review the backend config**
 
@@ -240,7 +242,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
 
     ```bash
     terraform init \
-        -backend-config="bucket=tf-state-userxx-XXXXXXXX" \
+        -backend-config="bucket=userXX-terraform-state-SUFFIX" \
         -backend-config="region=us-east-2"
     ```
     Replace the placeholder bucket name with your actual bucket and `us-east-2` with the region your bucket actually lives in (per the `get-bucket-location` command in Task 1 Step 5, or by checking the S3 console).
@@ -436,7 +438,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     }
     ```
 
-    > **Why protect the SG?** Once production workloads attach to a security group, deleting it can sever connectivity for every running instance. `prevent_destroy` makes accidental removal a hard stop. (For the **state bucket** itself — which we deliberately did NOT import — the same principle applies even more strongly. That's why the state bucket stays under Day 1-2's `module.s3_bucket` management with its own protections.)
+    > **Why protect the SG?** Once production workloads attach to a security group, deleting it can sever connectivity for every running instance. `prevent_destroy` makes accidental removal a hard stop. (For the **state bucket** itself — which we deliberately did NOT import — the same principle applies even more strongly. That's why the state bucket stays under `lab1/state-infra`'s management with its own protections.)
     22. **Verify the lifecycle change loads cleanly**
 
     ```bash
@@ -603,7 +605,7 @@ Expect the same cleanup work afterwards as you saw with `-generate-config-out` i
 *A: Some AWS resources have no single primary identifier and Terraform uses a composite of their parents to import them. For route table associations, the import format is `<subnet-id>/<route-table-id>`. The `rtbassoc-` ID is what AWS returns AFTER the resource exists; the COMPOUND ID is what Terraform uses to find it.*
 
 **Q3.** Why did this lab deliberately NOT import the S3 state bucket?
-*A: Two reasons. (1) The bucket is already managed by `module.s3_bucket` in Day 1-2's state — importing it into a second state would create dual-management, where two states each think they own the resource and either could break the other. (2) State buckets hold the state files for every Terraform project you've built — destroying one (or accidentally drifting it) means losing access to all of that work. Even with `prevent_destroy`, you generally don't experiment with state buckets in import labs. The right move is to leave the bucket under its original module's management and never touch it from a secondary state.*
+*A: Two reasons. (1) The bucket is already managed by `lab1/state-infra`'s state — importing it into a second state would create dual-management, where two states each think they own the resource and either could break the other. (2) State buckets hold the state files for every Terraform project you've built — destroying one (or accidentally drifting it) means losing access to all of that work. Even with `prevent_destroy`, you generally don't experiment with state buckets in import labs. The right move is to leave the bucket under `lab1/state-infra`'s management and never touch it from a secondary state.*
 
 ---
 
