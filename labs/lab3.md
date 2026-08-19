@@ -475,7 +475,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Replace `studentXX` with your assigned student ID — the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
 
-    > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue` — if you scope it down later, the `env:` block is the thing that breaks first, and it fails *before* any build command runs.
+    > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue` — if you scope that role down later, the `env:` block fails first — before any build command runs.
 
 24. **Export the values as `TF_VAR_*` so the plan picks them up**
 
@@ -524,7 +524,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     Replace `studentXX` with your student ID. Two things to notice:
 
     - **`sensitive = true`** keeps `db_password` out of `terraform plan` output and out of any plaintext output — Terraform prints `(sensitive value)` instead.
-    - **The `default = "unset"`** matters. Plan-Prod and the Validate stage run against code that has no `TF_VAR_db_*` set; without defaults those stages would fail with "No value for required variable."
+    - **The `default = "unset"`** matters. Plan-Production and the Validate stage run against code that has no `TF_VAR_db_*` set; without defaults those stages would fail with "No value for required variable."
 
 26. **Re-apply the pipeline and push the wrapper changes**
 
@@ -818,7 +818,7 @@ Filter by tag: `Student = studentXX` in the AWS console.
 - [ ] Reviewed Plan-Staging output (7 resources)
 - [ ] Approved Staging deployment
 - [ ] Verified staging with curl (us-east-2)
-- [ ] Reviewed Plan-Prod output (7 resources)
+- [ ] Reviewed Plan-Production output (7 resources)
 - [ ] Approved Production deployment
 - [ ] Verified production with curl (us-west-2)
 - [ ] Confirmed resources tagged with IAM username

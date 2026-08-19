@@ -499,7 +499,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     cd ~/Advanced_Terraform/lab1/state-infra
     ```
 
-    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count` — the whole Part D block is a no-op until `state_bucket_name` is set (you'll set it in Step 19):
+    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count` — the whole Part D block stays dormant until `state_bucket_name` is set (you'll set it in Step 19):
 
     ```hcl
     data "terraform_remote_state" "networking" {

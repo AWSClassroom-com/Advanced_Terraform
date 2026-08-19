@@ -18,10 +18,11 @@ resource "aws_security_group" "allow-http-ssh" {
     Name = "${var.account}-allow-http-ssh"
   }
 
-  # Will be added in a later step; commented for now so the initial import succeeds.
-  # lifecycle {
-  #   prevent_destroy = true
-  # }
+  lifecycle {
+    # Will be added in a later step; commented for now so the initial import succeeds.
+    # Once imported and verified, uncomment to protect against accidental destroy.
+    # prevent_destroy = true
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow-http-ipv4" {

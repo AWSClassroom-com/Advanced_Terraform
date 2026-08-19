@@ -475,7 +475,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 21. **Add `prevent_destroy` to the VPC**
 
-    Edit `network.tf` — uncomment the `lifecycle` block on `aws_vpc.custom-vpc`:
+    Edit `network.tf` — in the `lifecycle` block on `aws_vpc.custom-vpc`, uncomment the `prevent_destroy` line (leave the `lifecycle {` and `}` lines alone — they're already active):
 
     ```hcl
     resource "aws_vpc" "custom-vpc" {
@@ -488,7 +488,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
     22. **Add `prevent_destroy` to the security group**
 
-    Edit `security-group.tf` — uncomment the `lifecycle` block on `aws_security_group.allow-http-ssh`:
+    Edit `security-group.tf` — same one-line change: uncomment `prevent_destroy` inside the `lifecycle` block on `aws_security_group.allow-http-ssh`:
 
     ```hcl
     resource "aws_security_group" "allow-http-ssh" {
@@ -508,7 +508,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
     **Expected:** `No changes. Your infrastructure matches the configuration.`
 
-    > **Why no diff, and why no `terraform apply`?** `lifecycle` blocks (`prevent_destroy`, `ignore_changes`, `create_before_destroy`, `replace_triggered_by`) are **plan-time meta-arguments**, not resource attributes. Terraform reads them client-side every time it plans, but they aren't stored in state and they don't change anything on AWS. So uncommenting the `lifecycle` block produces zero diff and there's nothing to apply — the protection is active the moment the config parses. Step 23 is what actually proves it's working.
+    > **Why no diff, and why no `terraform apply`?** `lifecycle` blocks (`prevent_destroy`, `ignore_changes`, `create_before_destroy`, `replace_triggered_by`) are **plan-time meta-arguments**, not resource attributes. Terraform reads them client-side every time it plans, but they aren't stored in state and they don't change anything on AWS. So uncommenting the `lifecycle` block produces zero diff and there's nothing to apply — the protection is active the moment the config parses. Step 24 is what actually proves it's working.
     24. **Test the protection**
 
     ```bash
@@ -560,7 +560,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     terraform workspace select default
     terraform workspace delete dev
     ```
-    > **If you used Option B (lean VPC)**, also clean up the lean stack's local state. Step 25's `terraform destroy` (from `lab2/import/`) already removed the actual AWS resources, but `lab2/day1-vpc-lean/terraform.tfstate` still thinks it owns them — dangling references. The cleanest way to clear that:
+    > **If you used Option B (lean VPC)**, also clean up the lean stack's local state. Step 26's `terraform destroy` (from `lab2/import/`) already removed the actual AWS resources, but `lab2/day1-vpc-lean/terraform.tfstate` still thinks it owns them — dangling references. The cleanest way to clear that:
     >
     > ```bash
     > cd ~/Advanced_Terraform/lab2/day1-vpc-lean
