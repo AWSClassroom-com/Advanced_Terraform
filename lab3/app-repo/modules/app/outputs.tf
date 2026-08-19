@@ -2,7 +2,7 @@
 # Exposed for the environment wrappers + verification commands in Lab 3.
 
 output "public_ip" {
-  description = "Public IP of the EC2 web server. Curl this from your laptop to confirm the pipeline deployed correctly."
+  description = "Public IP of the EC2 web server. Curl this from the lab EC2 instance to confirm the pipeline deployed correctly."
   value       = aws_instance.web.public_ip
 }
 

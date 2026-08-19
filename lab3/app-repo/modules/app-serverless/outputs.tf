@@ -9,7 +9,7 @@ output "public_ip" {
 }
 
 output "api_url" {
-  description = "HTTP API endpoint. Curl this from your laptop to verify the deploy."
+  description = "HTTP API endpoint. Curl this from the lab EC2 instance to verify the deploy."
   value       = aws_apigatewayv2_stage.default.invoke_url
 }
 

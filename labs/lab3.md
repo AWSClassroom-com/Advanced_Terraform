@@ -195,7 +195,7 @@ By the end of this lab, you will:
 > |---|---|---|
 > | **`lab3/app-repo/`** | **Source** Terraform code (modules + per-environment wrappers) that ships with the course. You'll copy *from* here. | Subdirectory of the `Advanced_Terraform` GitHub repo you cloned at the start of the course (`~/Advanced_Terraform/lab3/app-repo/`). |
 > | **`userXX-terraform-repo`** | The empty **CodeCommit repository** that Task 2 created. The CodePipeline is wired to watch this repo for pushes. You'll push *to* here. | AWS-side, in your staging region. Listed in the Step 7 output as `repository_clone_url_http = .../repos/userXX-terraform-repo`. |
-> | **`webapp-repo`** | The **local working directory name** you'll give to the `git clone` of `userXX-terraform-repo` in Step 10. Just a folder on your laptop — the name doesn't have to match the CodeCommit repo. We put it alongside `lab3/pipeline/` and `lab3/app-repo/` so everything for this lab lives in `~/Advanced_Terraform/lab3/`. | `~/Advanced_Terraform/lab3/webapp-repo/` after Step 10 runs. |
+> | **`webapp-repo`** | The **local working directory name** you'll give to the `git clone` of `userXX-terraform-repo` in Step 10. Just a folder on your lab EC2 instance — the name doesn't have to match the CodeCommit repo. We put it alongside `lab3/pipeline/` and `lab3/app-repo/` so everything for this lab lives in `~/Advanced_Terraform/lab3/`. | `~/Advanced_Terraform/lab3/webapp-repo/` after Step 10 runs. |
 >
 > **The flow:** clone `userXX-terraform-repo` to local `webapp-repo/` (Step 10) → copy contents of `lab3/app-repo/` into `webapp-repo/` (Step 11) → commit & push from `webapp-repo/` back up to `userXX-terraform-repo` on CodeCommit, which triggers the pipeline.
 
