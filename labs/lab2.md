@@ -302,13 +302,42 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     terraform init
     terraform plan -generate-config-out=generated.tf
     ```
-    **Expected:** Errors about conflicting attributes:
+    **Expected:** the plan fails with roughly six errors. That is the point of the demo — read them, don't skip past them. Abridged:
 
     ```
-    Error: Conflicting configuration arguments
-    "availability_zone": conflicts with availability_zone_id
+    │ Generating configuration during import is currently experimental...
+    │
+    │ Error: "" is not a valid CIDR block: invalid CIDR address:
+    │   with aws_route_table.public_rt, on generated.tf line 3
+    │
+    │ Error: Conflicting configuration arguments
+    │   with aws_subnet.subnet-a, on generated.tf line 2
+    │   "availability_zone": conflicts with availability_zone_id
+    │
+    │ Error: enable_lni_at_device_index must not be zero, got 0
+    │   with aws_subnet.subnet-a, on generated.tf line 7
+    │
+    │ Error: Missing required argument
+    │   with aws_vpc.custom-vpc, on generated.tf line 10
+    │   "ipv6_netmask_length": all of `ipv6_ipam_pool_id,ipv6_netmask_length` must be specified
+    │
+    │ Error: Missing required argument
+    │   with aws_subnet.subnet-a, on generated.tf line 15
+    │   "map_customer_owned_ip_on_launch": all of
+    │   `customer_owned_ipv4_pool,map_customer_owned_ip_on_launch,outpost_arn` must be specified
     ```
-    13. **Examine the partial output**
+
+    Six errors, but only **three kinds of mistake** — and every one is generation writing something it should have left out entirely:
+
+    | Kind | Errors above | What generation did |
+    |---|---|---|
+    | **Zero value instead of omission** | `"" is not a valid CIDR`, `enable_lni_at_device_index must not be zero` | Wrote the type's empty value (`""`, `0`) rather than omitting the argument. The provider validates it as if you meant it. |
+    | **Both halves of a conflicting pair** | `availability_zone` ⇄ `availability_zone_id` (reported once from each side) | Emitted two arguments that are mutually exclusive by definition. |
+    | **Half of a required group** | `ipv6_netmask_length`, `map_customer_owned_ip_on_launch` | Emitted one argument from a set that only makes sense together. |
+
+    > **The file still gets written.** These are validation errors against `generated.tf` *after* Terraform created it — that's why each one cites a line number in a file the plan supposedly failed to produce. You can inspect it, which is exactly what you'll do next.
+
+13. **Examine the generated file**
 
     Don't just `head` the file — the first block you land on is one of the security-group rules, the two smallest resources here, and they show none of the problems. The **subnet** is where all of them appear at once:
 
@@ -316,13 +345,15 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     sed -n '/^resource "aws_subnet"/,/^}/p' generated.tf
     ```
 
-    Notice the problems Chapter 2 warned about:
-    - **Conflicting attributes** — both `availability_zone` and `availability_zone_id` are emitted. That pair is mutually exclusive, and it is the exact error that stopped generation in the previous step.
-    - **`tags_all`** — a computed merge of the resource's own `tags` and the provider's `default_tags`. It exists to be read, not set.
-    - **Every settable attribute, not just the ones you need** — roughly two dozen arguments, most of them `null`.
-    - **Hardcoded IDs, not references** — `vpc_id = "vpc-0abc…"` instead of `aws_vpc.custom.id`. Nothing is wired together; Terraform has no idea that ID belongs to a resource it also manages.
+    Now you can see the errors in context:
 
-    > **What generation does get right:** read-only attributes like `arn` and `owner_id` are correctly left out — Terraform only emits arguments you *could* set. The problem isn't that it dumps everything the API returns. It's that it dumps everything you *could* configure, with no opinion about what you *should*.
+    - **Every settable attribute, not just the ones you need** — roughly two dozen arguments where the cleaned version needs four. Most are `null`.
+    - **`availability_zone` and `availability_zone_id` both present** — the conflicting pair from the errors above, sitting right next to each other.
+    - **`enable_lni_at_device_index = 0`** — the value that produced "must not be zero". Nothing set it; `0` is just what an unset integer looks like when you insist on writing it down.
+    - **`tags_all`** — a computed merge of the resource's own `tags` and the provider's `default_tags`. Harmless, but it isn't yours to set, so it goes.
+    - **Hardcoded IDs, not references** — `vpc_id = "vpc-0abc…"` instead of `aws_vpc.custom-vpc.id`. Nothing is wired together; Terraform has no idea that ID belongs to a resource it also manages.
+
+    > **What generation does get right:** read-only attributes like `arn` and `owner_id` are correctly left out — Terraform only emits arguments you *could* set. The problem isn't that it dumps everything the API returns; it's that it dumps everything you *could* configure, with no opinion about what you *should*, and no way to tell "unset" from "set to zero".
 
 14. **Compare the generated version against the cleaned one**
 
@@ -338,14 +369,18 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     Read the `diff` as a to-do list: every `>` line is something you would have had to delete or rewrite by hand before this config was usable.
 
-    Two differences matter more than the line count:
+    **Deleting the noise is the easy half.** The half that matters is *where each surviving value comes from*. Same four arguments, four different sources:
 
-    | Generated | Cleaned (`network.tf`) |
-    |---|---|
-    | `vpc_id = "vpc-0abc…"` | `vpc_id = aws_vpc.custom-vpc.id` |
-    | `availability_zone` **and** `availability_zone_id`, both literal | `availability_zone = data.aws_subnet.imported.availability_zone` |
+    | Cleaned (`network.tf`) | Source | Why not the generated literal? |
+    |---|---|---|
+    | `vpc_id = aws_vpc.custom-vpc.id` | **resource reference** | Creates the dependency edge. Terraform now knows the subnet needs the VPC first. |
+    | `cidr_block = var.public_subnet_cidr` | **variable** | One value, one place. The generated `"192.168.0.0/24"` is the same string with no single source of truth. |
+    | `availability_zone = data.aws_subnet.imported.availability_zone` | **data source** | Reads the live AZ instead of pinning it, and sidesteps the `availability_zone_id` conflict entirely. |
+    | `map_public_ip_on_launch = true` | **literal** | Genuinely a choice you are making. Literals are fine when the value *is* the decision. |
 
-    The cleaned version keeps four arguments and expresses two of them as **references**. That's what makes the configuration a dependency graph Terraform can reason about, instead of a snapshot of IDs that happen to be true today.
+    Compare that with the tags too — generated gives you a frozen `Name = "user07-public-subnet-a"`, cleaned gives you `Name = "${var.account}-public-subnet-a"`, which is why the same file works for every student in the class.
+
+    > **The takeaway isn't "generated config is bad."** Every value in it is *correct* — it's a faithful snapshot of what exists right now. It's just inert: no dependencies, no parameterisation, no reuse. Cleaning is the work of turning a snapshot into a configuration.
 
 15. **Clean up the demo + return to the real import dir**
 
