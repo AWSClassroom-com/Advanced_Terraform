@@ -88,9 +88,9 @@ By the end of this lab, you will:
     3. **Plan-Staging** - Plans for us-east-2, saves artifact
     4. **Approve-Staging** - Manual approval gate
     5. **Apply-Staging** - Applies saved plan to us-east-2
-    6. **Plan-Prod** - Plans for us-west-2, saves artifact
-    7. **Approve-Prod** - Manual approval gate
-    8. **Apply-Prod** - Applies saved plan to us-west-2
+    6. **Plan-Production** - Plans for us-west-2, saves artifact
+    7. **Approve-Production** - Manual approval gate
+    8. **Apply-Production** - Applies saved plan to us-west-2
 
 3. **Review the CodeBuild Projects**
 
@@ -136,11 +136,11 @@ By the end of this lab, you will:
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Edit `terraform.tfvars`. Use a **concrete** student ID like `student07` — the literal `studentXX` will be rejected by the `^student[0-9]{2}$` regex validator:
+    Edit `terraform.tfvars`. Use the **same concrete ID you used in Lab 1** (Lab 1 only accepts `userNN`, so e.g. `user07`). The validator here accepts `userNN` or `studentNN`, but the literal placeholder `studentXX` is rejected — and using a different ID than Lab 1 would break the shared naming that Lab 4's dashboard depends on:
 
     ```hcl
-    student_id        = "student07"                         # ← REPLACE 07 with YOUR assigned student number (same value you used in Lab 1)
-    state_bucket_name = "student07-terraform-state-ab12cd"  # ← REPLACE with YOUR actual bucket name from Lab 1 `terraform output state_bucket_name`
+    student_id        = "user07"                         # ← REPLACE 07 with YOUR assigned student number (same value you used in Lab 1)
+    state_bucket_name = "user07-terraform-state-ab12cd"  # ← REPLACE with YOUR actual bucket name from Lab 1 `terraform output state_bucket_name`
     ```
 
 6. **Configure Backend**
@@ -299,8 +299,8 @@ By the end of this lab, you will:
 
     | Placeholder | Replace with |
     |---|---|
-    | `studentXX` | your assigned student ID (e.g., `student07`) |
-    | `studentXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `student07-terraform-state-ab12cd`) |
+    | `studentXX` | your assigned student ID (e.g., `user07`) |
+    | `studentXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `user07-terraform-state-ab12cd`) |
 
     The places that need changing in `environments/staging/main.tf`:
 
@@ -514,7 +514,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     # Proves the injection worked: check this parameter in the console after the
     # pipeline runs and you'll see the Parameter Store value that CodeBuild fetched.
     resource "aws_ssm_parameter" "db_config" {
-      name  = "/${var.db_host == "unset" ? "unset" : "studentXX"}/staging/db-endpoint"
+      name  = "/studentXX/staging/db-endpoint"
       type  = "String"
       value = var.db_host
     }
@@ -547,7 +547,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     - `[Container] env DB_HOST = rds.studentXX.example.com` — the Parameter Store value, visible
     - `[Container] env DB_PASSWORD = ***` — Secrets Manager values are masked, never logged
 
-    The `terraform plan` output shows `db_host = "rds.studentXX.example.com"` but `db_password = (sensitive value)` because of the `sensitive = true` flag. After the pipeline finishes, confirm the parameter the plan created:
+    The `terraform plan` output shows `db_host = "rds.studentXX.example.com"` but `db_password = (sensitive value)` because of the `sensitive = true` flag. After the pipeline finishes, confirm the parameter the pipeline created:
 
     ```bash
     aws ssm get-parameter --name "/${STUDENT}/staging/db-endpoint" \
@@ -562,21 +562,21 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 28. **Review Production Plan**
 
-    After staging apply completes, the pipeline automatically runs **Plan-Prod**:
+    After staging apply completes, the pipeline automatically runs **Plan-Production**:
 
-    1. Click **Details** on Plan-Prod
+    1. Click **Details** on Plan-Production
     2. View the plan in CodeBuild logs
     3. Verify it's creating the same 7 resources in **us-west-2**
 
 29. **Approve Production Deployment**
 
-    When pipeline reaches **Approve-Prod**:
+    When pipeline reaches **Approve-Production**:
 
     1. Click **Review**
     2. Comment: "Staging verified. Approving production deployment to us-west-2"
     3. Click **Approve**
 
-    Watch **Apply-Prod** execute.
+    Watch **Apply-Production** execute.
 
 30. **Verify Production Deployment**
 
@@ -680,7 +680,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Same shape as the EC2 path — only the heading and "Deployed via..." line change. Repeat for prod (use `pipeline/prod/terraform.tfstate`).
 
-    > **What you just demonstrated.** Because both modules share an input/output interface, the pipeline didn't need to change at all. The Plan-Staging/Apply-Staging/Plan-Prod/Apply-Prod stages run identically — only the resources they manage are different. This is the practical payoff of designing module interfaces around stable contracts rather than the underlying technology.
+    > **What you just demonstrated.** Because both modules share an input/output interface, the pipeline didn't need to change at all. The Plan-Staging/Apply-Staging/Plan-Production/Apply-Production stages run identically — only the resources they manage are different. This is the practical payoff of designing module interfaces around stable contracts rather than the underlying technology.
 
 ---
 

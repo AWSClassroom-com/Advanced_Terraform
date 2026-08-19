@@ -3,7 +3,7 @@
 # Copy to terraform.tfvars and fill in your assigned student ID.
 
 # REQUIRED — used to name the S3 state bucket.
-# Pattern: studentNN (two-digit number). Example: user07
+# Pattern: userNN (two-digit number). Example: user07
 student_id = "userXX"
 
 # REQUIRED for Part D (cross-state app_config). Typically the same value as

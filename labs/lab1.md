@@ -499,47 +499,53 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     cd ~/Advanced_Terraform/lab1/state-infra
     ```
 
-    Open `main.tf` and find the `terraform_remote_state` data source:
+    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count` — the whole Part D block is a no-op until `state_bucket_name` is set (you'll set it in Step 19):
 
     ```hcl
-
-    # Cross-state dependency: Read VPC info from networking state
     data "terraform_remote_state" "networking" {
+      count = trimspace(var.state_bucket_name) == "" ? 0 : 1
+
       backend = "s3"
 
       config = {
-    bucket = var.state_bucket_name
-    key    = "networking/terraform.tfstate"
-    region = "<your-assigned-region>"  # e.g. us-east-2
+        bucket = var.state_bucket_name
+        key    = "networking/terraform.tfstate"
+        region = var.region
       }
     }
 
     locals {
-      # Values from networking state
-      vpc_id            = data.terraform_remote_state.networking.outputs.vpc_id
-      subnet_id         = data.terraform_remote_state.networking.outputs.subnet_id
-      security_group_id = data.terraform_remote_state.networking.outputs.security_group_id
-
-      # Environment from workspace
-      environment = terraform.workspace
+      cross_state_enabled = length(data.terraform_remote_state.networking) > 0
+      vpc_id              = local.cross_state_enabled ? data.terraform_remote_state.networking[0].outputs.vpc_id : ""
+      subnet_id           = local.cross_state_enabled ? data.terraform_remote_state.networking[0].outputs.subnet_id : ""
+      security_group_id   = local.cross_state_enabled ? data.terraform_remote_state.networking[0].outputs.security_group_id : ""
+      environment         = terraform.workspace
     }
 
-    # Application resource that uses networking outputs
+    # Application resource that uses networking outputs. Gated on the cross-state
+    # data source so Part A doesn't try to create this before lab1/networking
+    # has been deployed.
     resource "aws_ssm_parameter" "app_config" {
-      name  = "/${var.account}/${local.environment}/app-config"
-      type  = "String"
+      count = local.cross_state_enabled ? 1 : 0
+
+      name = "/${var.account}/${local.environment}/app-config"
+      type = "String"
       value = jsonencode({
-    environment       = local.environment
-    vpc_id            = local.vpc_id
-    subnet_id         = local.subnet_id
-    security_group_id = local.security_group_id
-    deployed_at       = timestamp()
+        environment       = local.environment
+        vpc_id            = local.vpc_id
+        subnet_id         = local.subnet_id
+        security_group_id = local.security_group_id
+        deployed_at       = timestamp()
       })
 
       tags = {
-    Environment = local.environment
-    ManagedBy   = "terraform"
-    Workspace   = terraform.workspace
+        Environment = local.environment
+        ManagedBy   = "terraform"
+        Workspace   = terraform.workspace
+      }
+
+      lifecycle {
+        ignore_changes = [value]
       }
     }
     ```

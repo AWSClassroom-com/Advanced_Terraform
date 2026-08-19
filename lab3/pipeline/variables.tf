@@ -2,7 +2,7 @@
 # Input variables for Lab 3 pipeline infrastructure
 
 variable "student_id" {
-  description = "Your student ID (e.g., student01)"
+  description = "Your student ID (e.g., user01) — same value as Lab 1"
   type        = string
 
   validation {
@@ -19,7 +19,7 @@ variable "student_id" {
 # manually copy this value into the backend block after Lab 1 is deployed.
 
 variable "state_bucket_name" {
-  description = "S3 bucket name from Lab 1 output (e.g., student01-terraform-state-abc123)"
+  description = "S3 bucket name from Lab 1 output (e.g., user01-terraform-state-abc123)"
   type        = string
 
   validation {
