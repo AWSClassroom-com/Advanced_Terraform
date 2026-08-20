@@ -335,7 +335,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
     Open the URL in your browser. You should see the widget rows described in Step 10.
 
-    > **Some widgets will still be empty when you finish, and that is fine.** CloudWatch takes 5-10 minutes to surface a new metric, and the S3 widgets only count activity since Lab 1 created the metrics configuration. Do not sit and wait. If a widget stays empty, check the two things that are actually ever wrong: that `account` matches the `student_id` you used in Lab 3, and that `state_bucket_name` matches `terraform output state_bucket_name` from Lab 1.
+    > **Some widgets will still be empty when you finish, and that is fine.** CloudWatch takes 5-10 minutes to surface a new metric. Do not sit and wait. If a widget stays empty, check the two things that are actually ever wrong: that `account` matches the `student_id` you used in Lab 3, and that `state_bucket_name` matches `terraform output state_bucket_name` from Lab 1.
 
 ---
 
