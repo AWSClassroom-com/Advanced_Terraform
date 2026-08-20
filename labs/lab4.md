@@ -232,8 +232,6 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
     | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
 
-    **Empty result is expected if you ran Lab 3 Task 5 before the trail existed.** A trail records from the moment it starts logging and cannot backfill, so parameter writes from earlier in the course were never captured. To widen the window, raise `43200` (seconds) and the `START=-12h` value together — but no window reaches back past the trail's start.
-
 8. **Save the query for reuse**
 
     In the console, click **Save**, name it `userXX-terraform-activity`, and click **Save** again.
