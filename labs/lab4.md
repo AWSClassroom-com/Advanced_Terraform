@@ -335,7 +335,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
     Open the URL in your browser. You should see the widget rows described in Step 10.
 
-    > **Note on data freshness:** CloudWatch metrics for new resources take **5-10 minutes** to populate. If a widget shows "No data" immediately after deploy, give it time and refresh. If it's still empty after 30 minutes, verify the bucket name in `terraform.tfvars` actually matches your Lab 1 `terraform output` value — the widgets are reading from whatever bucket you named.
+    > **Some widgets will still be empty when you finish, and that is fine.** CloudWatch takes 5-10 minutes to surface a new metric, and the S3 widgets only count activity since Lab 1 created the metrics configuration. Do not sit and wait. If a widget stays empty, check the two things that are actually ever wrong: that `account` matches the `student_id` you used in Lab 3, and that `state_bucket_name` matches `terraform output state_bucket_name` from Lab 1.
 
 ---
 
