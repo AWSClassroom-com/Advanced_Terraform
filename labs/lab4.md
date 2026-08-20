@@ -187,13 +187,19 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | limit 20' \
         --query queryId --output text)
 
-    aws logs get-query-results --region us-east-2 --query-id "$QID"
+    aws logs get-query-results --region us-east-2 --query-id "$QID"         --query 'results[*][?field!=`@ptr`].value' --output text
     ```
-    Replace the bucket name with your own from Lab 1.
+    Replace the bucket name with your own from Lab 1. The `--query` filter drops `@ptr`, an internal pointer CloudWatch returns on every row; without it the output is mostly base64.
+
+    **Expected:**
+
+    ```
+    2026-08-20 16:16:52.612  PutObject     env:/dev/lab1-app/terraform.tfstate    arn:aws:sts::...:assumed-role/Terraform-InstanceRole/i-0abc
+    2026-08-20 16:16:52.610  PutObject     env:/dev/lab1-app/terraform.tfstate.tflock  arn:aws:sts::...:assumed-role/Terraform-InstanceRole/i-0abc
+    ```
+    These are the state file writes Task 1 could not show.
 
     > **`"status": "Running"`?** The query has not finished. Re-run the `get-query-results` line; the ID stays valid.
-
-    This query finds the state file writes that Task 1 could not.
 
     **Expected:** `PutObject`, `GetObject`, and `DeleteObject` rows naming the object key — your state files at `env:/dev/lab1-app/terraform.tfstate` and `pipeline/staging/terraform.tfstate`, and the `.tflock` objects that appear and disappear around every apply.
 
@@ -215,7 +221,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | limit 20' \
         --query queryId --output text)
 
-    aws logs get-query-results --region us-east-2 --query-id "$QID"
+    aws logs get-query-results --region us-east-2 --query-id "$QID"         --query 'results[*][?field!=`@ptr`].value' --output text
     ```
     Replace `userXX` with your assigned student ID.
 
@@ -226,7 +232,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
     | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
 
-    Empty result is also valid — it just means no SSM parameter operations happened for your student ID in the last 12 hours. Widen the window by raising `43200` (seconds) and the `START=-12h` value together.
+    **Empty result is expected if you ran Lab 3 Task 5 before the trail existed.** A trail records from the moment it starts logging and cannot backfill, so parameter writes from earlier in the course were never captured. To widen the window, raise `43200` (seconds) and the `START=-12h` value together — but no window reaches back past the trail's start.
 
 8. **Save the query for reuse**
 
