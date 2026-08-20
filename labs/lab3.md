@@ -382,9 +382,11 @@ By the end of this lab, you will:
     When pipeline reaches **Approve-Staging**:
 
     1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
-    2. In the **Review** dialog, leave **Decision** set to **Approve**
-    3. Optionally add a comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
+    2. In the **Review** dialog, select **Approve** under **Decision** — neither option is preselected
+    3. Comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
     4. Click **Submit**
+
+    > **Why the comment matters.** CodePipeline stores it on the approval and CloudTrail records it. It is the only place the *reason* for a production change is captured — an auditor asking "who approved this and why" has nothing else to read. Treat it as required, not optional.
 
     Watch **Apply-Staging** execute. This takes ~2-3 minutes as the VPC and EC2 are created.
 
@@ -546,14 +548,16 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
 27. **Verify in the Plan-Staging build log**
 
-    Open the CodeBuild console for your **plan-staging** project (not apply — that's where the `env:` block now lives). Near the top of the log, before the first build command:
+    In the browser, open the **plan-staging** build log — in the **Plan-Staging** box, click the action name **Terraform-Plan-Staging**. (Plan, not apply: the `env:` block you added lives in the plan project.)
+
+    Look for this line near the top, before the first build command:
 
     ```
     [Container] ... Decrypting parameter store environment variables
     ```
     That single line is the whole confirmation the log gives you. **CodeBuild never prints the resolved values** — not the Parameter Store hostname, and certainly not the Secrets Manager password. That is the behaviour you want: a value that never reaches a build log cannot leak from one.
 
-    Further down, `terraform plan` shows the parameter being created:
+    Scroll down to the `terraform plan` output and find the parameter being created:
 
     ```
       # aws_ssm_parameter.db_config will be created
@@ -567,13 +571,33 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     > **Why is `value` redacted when you only marked `db_password` sensitive?** The AWS provider declares `aws_ssm_parameter.value` sensitive in its own schema, so Terraform hides it whatever you assign. That is also why the plan can't confirm the injected hostname for you — the proof comes after the apply.
 
-    After **Apply-Staging** finishes, read the parameter back:
+    Click **Overview** (top right) to return to the pipeline.
+
+28. **Approve staging, then confirm the injected value**
+
+    Your push in Step 26 started a fresh pipeline run, so the pipeline is waiting at **Approve-Staging** again. Nothing reaches AWS until you approve it.
+
+    1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
+    2. In the **Review** dialog, select **Approve** under **Decision**
+    3. Comment: "Reviewed plan - adds db-endpoint parameter from injected values"
+    4. Click **Submit**
+
+    Wait for **Apply-Staging** to finish (~1 minute — it is adding one parameter, not rebuilding the stack).
+
+    Now switch back to your **EC2 instance** and read the parameter the pipeline created:
 
     ```bash
     aws ssm get-parameter --name "/${STUDENT}/staging/db-endpoint" \
         --query 'Parameter.Value' --output text --region us-east-2
     ```
-    **Expected:** `rds.userXX.example.com` — the value you put in Parameter Store in Step 21, carried through the pipeline into a real resource.
+    **Expected:**
+
+    ```
+    rds.userXX.example.com
+    ```
+    That is the value you put in Parameter Store in Step 21 — pulled by CodeBuild, passed to Terraform as `TF_VAR_db_host`, and written into a real resource, without ever appearing in a build log.
+
+    > **`ParameterNotFound`?** Apply-Staging has not finished. The parameter is created by the apply, not the plan — check the pipeline and wait for the **Apply-Staging** box to go green, then re-run the command.
 
     > **In production, scope tighter.** The CodeBuild role in `lab3/pipeline/iam.tf` grants `ssm:*` and `secretsmanager:GetSecretValue` on `*`. For real workloads, scope `secretsmanager:GetSecretValue` to the specific secret ARN and `ssm:GetParameter*` to the specific parameter path prefix. Use `aws:ResourceTag` condition keys to limit by environment.
 
@@ -581,7 +605,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 6: Promote to Production (10 min)
 
-28. **Review Production Plan**
+29. **Review Production Plan**
 
     After staging apply completes, the pipeline automatically runs **Plan-Production**:
 
@@ -589,18 +613,18 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     2. The **Logs** tab opens on the CodeBuild output
     3. Verify it's creating the same 7 resources in **us-west-2**
 
-29. **Approve Production Deployment**
+30. **Approve Production Deployment**
 
     When pipeline reaches **Approve-Production**:
 
     1. In the **Approve-Production** box, click the action name **Approve-Production-Deploy**
-    2. In the **Review** dialog, leave **Decision** set to **Approve**
-    3. Optionally add a comment: "Staging verified. Approving production deployment to us-west-2"
+    2. In the **Review** dialog, select **Approve** under **Decision** — neither option is preselected
+    3. Comment: "Staging verified. Approving production deployment to us-west-2"
     4. Click **Submit**
 
     Watch **Apply-Production** execute.
 
-30. **Verify Production Deployment**
+31. **Verify Production Deployment**
 
     Same flow as Step 20, but reading from the prod state key (`pipeline/prod/...`):
 
@@ -628,7 +652,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 7: Verify in AWS Console (5 min)
 
-31. **Check Your Resources**
+32. **Check Your Resources**
 
     **Staging (us-east-2):**
 
@@ -649,7 +673,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 > **Skip this task if you're running short on time** — proceed directly to Task 9 (Cleanup). The main lab is complete after Task 7. This bonus task demonstrates that swapping the deployed *payload* (EC2 → Lambda + API Gateway) requires changing **one line per environment** when the modules share an interface — and it gives students who finished early a tangible "modern serverless" experience to compare against the EC2 path.
 
-32. **Swap both environments to the serverless module**
+33. **Swap both environments to the serverless module**
 
     The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`student_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
 
@@ -671,7 +695,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Then make the same change in `environments/prod/main.tf`.
 
-33. **Commit, push, and verify the serverless deploy**
+34. **Commit, push, and verify the serverless deploy**
 
     ```bash
     git add environments/staging/main.tf environments/prod/main.tf
@@ -708,7 +732,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 9: Cleanup Through Pipeline (Optional but Recommended)
 
-34. **Trigger Destroy**
+35. **Trigger Destroy**
 
     The pipeline has no destroy stage — its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
 
@@ -729,7 +753,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Edit the Terraform code to remove resources, push, and let pipeline apply the changes.
 
-35. **Verify Cleanup**
+36. **Verify Cleanup**
 
     Verify no instances remain (regardless of whether you ran the bonus or stayed on EC2):
 
@@ -755,7 +779,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Both should return empty after destroy.
 
-36. **Delete the Task 5 secret and parameter**
+37. **Delete the Task 5 secret and parameter**
 
     These were created by CLI, not Terraform, so `terraform destroy` does not remove them. Secrets Manager bills $0.40/secret/month until the deletion window closes.
 
