@@ -146,9 +146,6 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     1. Open **CloudWatch**.
     2. Expand **Logs** in the left nav, then choose **Log Analytics**.
 
-    A welcome banner appears: *"Log Analytics combines Logs Insights, Live Tail, and Contributor Insights in a unified experience."* Click **OK**. This is the current home of the query editor that used to be called Logs Insights, and the query language is unchanged.
-
-    > **Opting out.** The banner also offers **Opt out (Logs Insights)**, which returns you to the previous editor. The steps below are written for Log Analytics.
 
 6. **Select the CloudTrail Log Group**
 
@@ -159,10 +156,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     ```
     SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-1w END=0s |
     ```
-    That `SOURCE` line is new. The old editor took the log group from a dropdown and kept it out of the query; Log Analytics puts it in the query itself, which is what lets one query span several log groups. Two things follow from that:
-
-    - **Leave line 1 alone.** Every query below replaces only the lines underneath it.
-    - Line 1 already ends in a pipe (`|`), so the first command after it does **not** start with one.
+    The `SOURCE` line names the log group inside the query itself, which is what lets one query span several log groups. It already ends in a pipe, so the first command after it does not start with one.
 
     Set the time range to **12h**.
 
@@ -211,7 +205,9 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     **Expected:** `PutObject`, `GetObject`, and `DeleteObject` rows naming the object key — your state files at `env:/dev/lab1-app/terraform.tfstate` and `pipeline/staging/terraform.tfstate`, and the `.tflock` objects that appear and disappear around every apply.
 
-    Nothing about the activity changed between Task 1 and now. The only difference is that something was recording it.
+    The activity did not change between Task 1 and now, and neither did what was being recorded. Event history and this log group are two different stores: event history holds management events only and never held these calls, while the trail delivers data events here. Task 1 was looking somewhere they could not appear.
+
+    > **One thing genuinely is unrecoverable.** Data events from before the trail existed were never captured anywhere, so they cannot be recovered now. That is the same point Lab 1 made when it enabled S3 request metrics: you have to decide to collect before the activity happens.
 
 9. **Run a Resource-Scoped Query**
 
