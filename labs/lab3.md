@@ -831,6 +831,27 @@ CodeCommit polling runs about once a minute, so allow 1-2 minutes after a push �
 
 > **Why polling and not an event?** A CodePipeline created through the console gets an EventBridge rule for push-triggering created for it automatically. One created through the API — which is what Terraform does — does not, and the API default for `PollForSourceChanges` is `false`. `lab3/pipeline/codepipeline.tf` sets it to `"true"` explicitly so pushes trigger the pipeline without a separate EventBridge rule and its IAM role. In production, prefer the EventBridge rule: it fires in seconds instead of up to a minute, and it doesn't spend a polling API call every minute.
 
+### Apply Fails with "Saved plan is stale"
+
+```
+Error: Saved plan is stale
+The given plan file can no longer be applied because the state was changed
+by another operation after the plan was created.
+```
+
+Each push starts a pipeline execution, and an execution parked at an approval gate keeps its plan file from when the plan stage ran. If a different execution applies to the same environment in the meantime, the parked plan no longer matches the state and the apply refuses it.
+
+This is easy to reach in this lab: Task 4's push and Task 5's push are two executions, and both queue at **Approve-Production**. Approving the older one after the newer one has already applied produces exactly this error.
+
+To recover, run the newest execution instead of the parked one:
+
+1. In the pipeline console, click **Release change** to start a fresh execution from the latest commit
+2. Approve **Approve-Staging**, then **Approve-Production**, on that execution
+
+Check which execution you are approving by matching the commit message shown in each stage box.
+
+> **Why saved plans at all?** Applying a reviewed plan file is what makes the approval gate meaningful — the approver sees exactly what will be applied. The cost is that the plan can go stale, which is why production pipelines keep the window between plan and apply short.
+
 ### Validate Fails
 
 ```bash
