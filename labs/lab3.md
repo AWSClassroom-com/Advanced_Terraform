@@ -382,11 +382,11 @@ By the end of this lab, you will:
     When pipeline reaches **Approve-Staging**:
 
     1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
-    2. In the **Review** dialog, select **Approve** under **Decision** — neither option is preselected
+    2. In the **Review** dialog, select **Approve** under **Decision**
     3. Comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
     4. Click **Submit**
 
-    > **Why the comment matters.** CodePipeline stores it on the approval and CloudTrail records it. It is the only place the *reason* for a production change is captured — an auditor asking "who approved this and why" has nothing else to read. Treat it as required, not optional.
+    > **Why the comment matters.** CodePipeline stores it on the approval and CloudTrail records it. It is the only place the *reason* for a change is recorded, which is exactly what Lab 4's audit queries look for. Don't skip it.
 
     Watch **Apply-Staging** execute. This takes ~2-3 minutes as the VPC and EC2 are created.
 
@@ -463,7 +463,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 23. **Update the plan-staging buildspec to pull both values**
 
-    > **Why the *plan* stage, not the apply stage?** The apply stage runs `terraform apply tfplan` against a **saved plan file**, and Terraform refuses to accept variables alongside a saved plan (`Error: Can't set variables when applying a saved plan file`) — a saved plan already contains the variable values that were set when it was created. So the secrets have to be resolved at **plan** time and baked into `tfplan`. That is also the safer design: the values the approver reviews in the plan are exactly the values that get applied.
+    > **Why the *plan* stage, not the apply stage?** The apply stage runs `terraform apply tfplan` against a **saved plan file**, and Terraform refuses to accept variables alongside a saved plan (`Error: Can't set variables when applying a saved plan file`) — a saved plan already contains the variable values that were set when it was created. So the secrets have to be resolved at **plan** time and baked into `tfplan`. This also means the values the approver reviews are the values that get applied.
 
     The buildspecs live inline in `lab3/pipeline/codebuild.tf`. Find the `plan_staging` project and add an `env:` block directly under `version: 0.2`, above `phases:`:
 
@@ -479,7 +479,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Replace `userXX` with your assigned student ID — the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
 
-    > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue` — if you scope that role down later, the `env:` block fails first — before any build command runs.
+    > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue`. If you scope it down later, the `env:` block is the first thing to fail, before any build command runs.
 
 24. **Export the values as `TF_VAR_*` so the plan picks them up**
 
@@ -555,7 +555,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     [Container] ... Decrypting parameter store environment variables
     ```
-    That single line is the whole confirmation the log gives you. **CodeBuild never prints the resolved values** — not the Parameter Store hostname, and certainly not the Secrets Manager password. That is the behaviour you want: a value that never reaches a build log cannot leak from one.
+    That line is the only confirmation the log gives. **CodeBuild does not print the resolved values** — not the Parameter Store hostname, and not the Secrets Manager password.
 
     Scroll down to the `terraform plan` output and find the parameter being created:
 
@@ -575,14 +575,14 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 28. **Approve staging, then confirm the injected value**
 
-    Your push in Step 26 started a fresh pipeline run, so the pipeline is waiting at **Approve-Staging** again. Nothing reaches AWS until you approve it.
+    Your push in Step 26 started a new pipeline run, so the pipeline is waiting at **Approve-Staging** again.
 
     1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
     2. In the **Review** dialog, select **Approve** under **Decision**
     3. Comment: "Reviewed plan - adds db-endpoint parameter from injected values"
     4. Click **Submit**
 
-    Wait for **Apply-Staging** to finish (~1 minute — it is adding one parameter, not rebuilding the stack).
+    Wait for **Apply-Staging** to finish.
 
     Now switch back to your **EC2 instance** and read the parameter the pipeline created:
 
@@ -595,7 +595,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     rds.userXX.example.com
     ```
-    That is the value you put in Parameter Store in Step 21 — pulled by CodeBuild, passed to Terraform as `TF_VAR_db_host`, and written into a real resource, without ever appearing in a build log.
+    That is the value you stored in Parameter Store in Step 21: CodeBuild fetched it, Terraform received it as `TF_VAR_db_host`, and the apply wrote it into a real resource.
 
     > **`ParameterNotFound`?** Apply-Staging has not finished. The parameter is created by the apply, not the plan — check the pipeline and wait for the **Apply-Staging** box to go green, then re-run the command.
 
@@ -618,7 +618,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     When pipeline reaches **Approve-Production**:
 
     1. In the **Approve-Production** box, click the action name **Approve-Production-Deploy**
-    2. In the **Review** dialog, select **Approve** under **Decision** — neither option is preselected
+    2. In the **Review** dialog, select **Approve** under **Decision**
     3. Comment: "Staging verified. Approving production deployment to us-west-2"
     4. Click **Submit**
 

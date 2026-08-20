@@ -302,7 +302,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     terraform init
     terraform plan -generate-config-out=generated.tf
     ```
-    **Expected:** the plan fails with six errors, not one. This is normal — the errors are what this demo is here to show. Abridged:
+    **Expected:** the plan fails with six errors, not one. That is the expected result here. Abridged:
 
     ```
     │ Generating configuration during import is currently experimental...
@@ -369,7 +369,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     Every `>` line in the diff is something you would have had to delete or rewrite by hand before the config was usable.
 
-    Deleting the extra attributes is the mechanical part. The important cleanup decision is **where each kept value comes from**. The cleaned version keeps four arguments and sources each one differently:
+    Removing the extra attributes is the mechanical part. The cleaned version keeps four arguments, and each one takes its value from a different place:
 
     | Cleaned (`network.tf`) | Source | Why |
     |---|---|---|
@@ -380,7 +380,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     The tags follow the same pattern: generated hardcodes `Name = "user07-public-subnet-a"`; the cleaned version uses `Name = "${var.account}-public-subnet-a"`, so the same file works for every student.
 
-    > **Note:** nothing in the generated file is wrong — it's an accurate snapshot of what exists right now. The cleanup is what turns that snapshot into configuration: references for dependencies, variables for reuse, and no computed attributes.
+    > **Note:** nothing in the generated file is wrong — it is an accurate snapshot of what exists right now. Cleanup turns that snapshot into configuration: references for dependencies, variables for reuse, and no computed attributes.
 
 15. **Clean up the demo + return to the real import dir**
 
