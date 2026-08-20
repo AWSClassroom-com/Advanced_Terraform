@@ -249,8 +249,6 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     ```
     > **Saved queries are not private.** CloudWatch stores them per Region, not per user, so everyone with access sees them all. Hence the student ID in the name.
 
-    The console button and the CLI call create the same thing. What the CLI adds is repeatability: the command can live in a script, so a standard set of audit queries can be recreated in a new account without anyone clicking through a console.
-
 ---
 
 ## Task 3: Deploy the Observability Dashboard (15 min)
