@@ -545,17 +545,34 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
 27. **Verify in the Plan-Staging build log**
 
-    Open the CodeBuild console for your **plan-staging** project (not apply — that's where the `env:` block now lives). In the build log:
+    Open the CodeBuild console for your **plan-staging** project (not apply — that's where the `env:` block now lives). Near the top of the log, before the first build command:
 
-    - `[Container] env DB_HOST = rds.userXX.example.com` — the Parameter Store value, visible
-    - `[Container] env DB_PASSWORD = ***` — Secrets Manager values are masked, never logged
+    ```
+    [Container] ... Decrypting parameter store environment variables
+    ```
+    That single line is the whole confirmation the log gives you. **CodeBuild never prints the resolved values** — not the Parameter Store hostname, and certainly not the Secrets Manager password. That is the behaviour you want: a value that never reaches a build log cannot leak from one.
 
-    The `terraform plan` output shows `db_host = "rds.userXX.example.com"` but `db_password = (sensitive value)` because of the `sensitive = true` flag. After the pipeline finishes, confirm the parameter the pipeline created:
+    Further down, `terraform plan` shows the parameter being created:
+
+    ```
+      # aws_ssm_parameter.db_config will be created
+      + resource "aws_ssm_parameter" "db_config" {
+          + name  = "/userXX/staging/db-endpoint"
+          + value = (sensitive value)
+        }
+
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    ```
+
+    > **Why is `value` redacted when you only marked `db_password` sensitive?** The AWS provider declares `aws_ssm_parameter.value` sensitive in its own schema, so Terraform hides it whatever you assign. That is also why the plan can't confirm the injected hostname for you — the proof comes after the apply.
+
+    After **Apply-Staging** finishes, read the parameter back:
 
     ```bash
     aws ssm get-parameter --name "/${STUDENT}/staging/db-endpoint" \
         --query 'Parameter.Value' --output text --region us-east-2
     ```
+    **Expected:** `rds.userXX.example.com` — the value you put in Parameter Store in Step 21, carried through the pipeline into a real resource.
 
     > **In production, scope tighter.** The CodeBuild role in `lab3/pipeline/iam.tf` grants `ssm:*` and `secretsmanager:GetSecretValue` on `*`. For real workloads, scope `secretsmanager:GetSecretValue` to the specific secret ARN and `ssm:GetParameter*` to the specific parameter path prefix. Use `aws:ResourceTag` condition keys to limit by environment.
 
