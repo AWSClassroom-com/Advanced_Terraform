@@ -234,13 +234,13 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
 8. **Save the query for reuse**
 
-    In the console, click **Save**, name it `userXX-terraform-activity`, and click **Save** again.
+    In the console, open the **Saved queries** dropdown and choose **Save**. A panel opens on the left: type `userXX-terraform-activity` and click **Save**.
 
-    The CLI stores the same object:
+    Now store a second one from the CLI. **Give it a different name** — query names must be unique in a Region, and reusing the one you just saved fails with `A query with this name already exists`:
 
     ```bash
     aws logs put-query-definition --region us-east-2 \
-        --name "userXX-terraform-activity" \
+        --name "userXX-terraform-activity-cli" \
         --log-group-names "/aws/cloudtrail/advanced-terraform" \
         --query-string 'fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
     | filter userAgent like /Terraform/
