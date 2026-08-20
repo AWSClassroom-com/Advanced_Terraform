@@ -72,25 +72,27 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     Try these filters one at a time. Each filter uses CloudTrail Event history's **Lookup attributes**:
 
-    **Filter 1: SSM Parameter Changes**
-    - Lookup attribute: **Event name**
-    - Value: `PutParameter`
-
-    **Filter 2: By Pipeline Session** (this only works if Lab 3's pipeline has executed)
-    - Lookup attribute: **User name**
-    - Value: the session name from one of your Filter 1 events, for example `AWSCodeBuild-83cb90b3-c7dd-4d7a-ad63-54e2ef68d46d`
-
-    Open a Filter 1 event first, copy the part of `userIdentity.arn` that follows the role name, and search on that.
-
-    > **Why not search for the role name?** Event history's **User name** attribute matches the *session* name, not the role. A CodeBuild session is named `AWSCodeBuild-<build id>` and changes on every build, so event history cannot show you everything one role has done. Task 2's Logs Insights query can, because it filters on `userIdentity.arn`, which contains the role name.
-
-    **Filter 3: State Bucket Changes**
+    **Filter 1: State Bucket Changes**
     - Lookup attribute: **Event name**
     - Value: `CreateBucket`, then try `PutBucketVersioning`
 
     Both come from Lab 1's `terraform apply`. Look for events where the **Resource name** column includes your state bucket (`userXX-terraform-state-SUFFIX`).
 
     > **Where are the state file writes?** They are not here. Every `terraform apply` wrote `PutObject` to the state bucket, but object-level calls are **data events**, and event history records **management events** only. Searching `PutObject` returns nothing no matter how much Terraform activity you have. Capturing data events needs a trail with S3 data event logging switched on, which costs per event and is off by default. It is a common audit gap: the bucket's *configuration* changes are recorded, the *object* writes are not.
+
+    **Filter 2: By Pipeline Role** (this only works if Lab 3's pipeline has executed)
+    - Lookup attribute: **User name**
+    - Value: `userXX-codebuild-terraform-role`
+
+    **Expected:** no results. That is not a mistake in your setup.
+
+    > **Why does the role name find nothing?** The **User name** attribute matches the *session* name, not the role. Each CodeBuild session is named `AWSCodeBuild-<build id>` and changes on every build, so event history cannot answer "show me everything this role did". You will see the session name inside `userIdentity.arn` in the next step, and searching that exact string does return the events for that one build. Answering the question properly is what Task 2's Logs Insights query is for: it filters on `userIdentity.arn`, which contains the role name.
+
+    **Filter 3: SSM Parameter Changes**
+    - Lookup attribute: **Event name**
+    - Value: `PutParameter`
+
+    These come from Lab 1's locking demo and, if you completed Task 5, from the pipeline as well. Keep this result on screen for the next step.
 
     > **If you see no events:** CloudTrail Event history retains the most recent 90 days of management events for free, but events take **up to 15 minutes** to appear after the underlying API call. If Labs 1-3 finished within the last 15 minutes, wait and refresh.
 
@@ -341,7 +343,7 @@ In order of likelihood:
 ## Lab Completion Checklist
 
 - [ ] Navigated to CloudTrail Event history
-- [ ] Ran the three lookup filters (Event name `PutParameter`, User name `AWSCodeBuild-<build id>`, Event name `CreateBucket`)
+- [ ] Ran the three lookup filters (Event name `CreateBucket`, User name `userXX-codebuild-terraform-role`, Event name `PutParameter`)
 - [ ] Examined a CloudTrail event JSON and identified `userIdentity.arn`, `userAgent`, `sourceIPAddress`, `eventTime`
 - [ ] Compared a pipeline event vs. a console/CLI event side by side
 - [ ] Ran the two Logs Insights queries (or skipped Task 2 with the documented reason)
