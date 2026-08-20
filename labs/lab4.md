@@ -54,7 +54,7 @@ You need to demonstrate:
 | **CloudTrail** | Records every AWS API call -- immutable audit trail |
 | **User Agent** | Terraform sends a `Terraform/<version>` token in user agent — distinguishes from console |
 | **Source IP** | The build container's private address for pipeline-originated calls vs. a public IP for calls made by hand |
-| **userIdentity.arn** | Identifies which CodeBuild project (or which IAM user) made the call |
+| **userIdentity.arn** | Names the role that signed the call: the CodeBuild role for pipeline work, the EC2 instance role for anything run by hand |
 
 ---
 
@@ -120,7 +120,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     |-------|-------------------|------------------------|
     | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP, or `console.amazonaws.com` for some console-routed calls |
     | `userAgent` | Contains `Terraform/1.10.x` | Contains `aws-cli/<version>` or browser User-Agent strings via console |
-    | `userIdentity.arn` | Assumed-role of the CodeBuild role | Your IAM user ARN |
+    | `userIdentity.arn` | Assumed-role of the CodeBuild role, `.../userXX-codebuild-terraform-role/AWSCodeBuild-<id>` | Assumed-role of the EC2 instance role, `.../Terraform-InstanceRole/i-<instance id>` |
 
     > **Auditor's question answered:** *"Were all production changes made through the pipeline?"*
     >
@@ -163,7 +163,7 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
     | 2026-05-14 15:42:09 | CreateLogGroup | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
     | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/user07 | 52.x.x.x |
 
-    The mix is what you want to see — most rows should have a `codebuild-terraform-role` ARN (= pipeline-driven); a row with your IAM-user ARN (= someone ran `terraform apply` from their laptop, breaking the Golden Rule) is the kind of anomaly the lab's audit story is built around.
+    The mix is what you want to see. Most rows should carry a `codebuild-terraform-role` ARN, meaning pipeline-driven. A row carrying `Terraform-InstanceRole` means someone ran Terraform by hand from the lab instance, which is the anomaly the audit story is built around.
 
 8. **Run a Resource-Scoped Query**
 
