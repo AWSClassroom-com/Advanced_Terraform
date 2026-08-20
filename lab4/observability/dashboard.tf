@@ -182,12 +182,12 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/S3", "PutRequests", "BucketName", var.state_bucket_name, "FilterId", "lockfile-activity"]
+            ["AWS/S3", "PutRequests", "BucketName", var.state_bucket_name, "FilterId", "EntireBucket"]
           ]
           view    = "timeSeries"
           stacked = false
           region  = var.region
-          title   = "State Lockfile Activity (S3 native locking — Terraform 1.10+)"
+          title   = "State Bucket PutRequests (state writes + .tflock lock/unlock)"
           period  = 300
           stat    = "Sum"
         }

@@ -225,7 +225,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Logs Insights |
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
 
-    > **About the "State Lockfile Activity" widget:** Lab 1 configures the S3 backend with `use_lockfile = true` (Terraform 1.10+ S3 native locking) — locks are S3 objects with a `.tflock` suffix, not DynamoDB items. The patched dashboard's lockfile widget references a CloudWatch metric `FilterId` named `lockfile-activity` — and that filter is created by **Appendix A**, not by the default `dashboard.tf`. **Until you apply Appendix A, this widget will show "No data" — that's expected, not a bug.** Appendix A adds an `aws_s3_bucket_metric` resource on your state bucket so the widget has metrics to display.
+    > **About the S3 request widgets:** Lab 1 configures the backend with `use_lockfile = true` (Terraform 1.10+ S3 native locking), so a lock is an S3 object with a `.tflock` suffix rather than a DynamoDB item. Both widgets read S3 request metrics, which Lab 1 enabled with `aws_s3_bucket_metric.entire_bucket`. Lock and unlock requests are counted inside the bucket-wide `PutRequests` total, because request metrics filter on a key prefix and `.tflock` is a suffix. Appendix A covers what it would take to separate them.
 12. **Configure Variables**
 
     ```bash
@@ -318,7 +318,7 @@ Widen the time range selector first — it defaults to a narrow window, and Labs
 In order of likelihood:
 
 1. **Metrics not populated yet** — wait 5-10 minutes after the source resource emits its first metric.
-2. **Both S3 widgets** (`State Bucket Operations` and `State Lockfile Activity`) — empty until you apply Appendix A. S3 publishes `GetRequests`/`PutRequests` only when a **request metrics configuration** exists on the bucket, and a new bucket has none. That configuration is the `aws_s3_bucket_metric` resource in Appendix A, which supplies both the `EntireBucket` and `lockfile-activity` filter IDs the widgets reference. Without it these two stay empty no matter how much Terraform activity you generate. Storage metrics are free and automatic; request metrics are opt-in and billed.
+2. **The two S3 widgets** — these read `GetRequests`/`PutRequests`, which S3 publishes only when a request metrics configuration exists on the bucket. Lab 1 creates one (`aws_s3_bucket_metric.entire_bucket`), so they should populate. If they don't: confirm that resource is in your `lab1/state-infra` state (`terraform state list | grep metric`), and remember metrics start from the moment the configuration is created, so only activity *after* Lab 1's apply is counted. Allow 5-10 minutes after a `plan` or `apply` for data to appear.
 3. **CodeBuild / Pipeline widgets** — only populate after Lab 3's pipeline has actually executed at least once. If Lab 3 was never deployed (or the pipeline never ran), these widgets will stay empty.
 4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "user07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
 5. **Wrong region** — `dashboard.tf` reads `var.region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
@@ -352,7 +352,7 @@ The classroom account has no CloudTrail trail, so there is no log group to query
 - [ ] Saved a reusable Logs Insights query
 - [ ] Deployed the CloudWatch dashboard via `terraform apply`
 - [ ] Opened the dashboard URL and identified each widget row
-- [ ] Acknowledged which widgets stay empty without Appendix A (State Lockfile Activity) or until Lab 3's pipeline runs (CodeBuild / Pipeline widgets)
+- [ ] Acknowledged which widgets stay empty until Lab 3's pipeline runs (CodeBuild / Pipeline widgets)
 
 ---
 
@@ -400,25 +400,18 @@ cd ~/Advanced_Terraform/lab1/state-infra && terraform destroy
 
 ---
 
-## Appendix A — Enabling per-prefix S3 request metrics (instructor optional)
+## Appendix A — Why the S3 widgets cannot separate lock activity
 
-The dashboard's "S3 Lockfile Activity" widget already shows S3 PutRequest activity for your state bucket — no further changes needed for the widget itself. However, by default the widget shows **bucket-level** PutRequest activity (every put, not just lockfile puts).
+Lab 1 creates `aws_s3_bucket_metric.entire_bucket` on the state bucket, so both S3 widgets have data. What they cannot do is show `.tflock` activity on its own.
 
-If you want the widget to show only `.tflock` activity, add an S3 request metrics filter to the state bucket. Add this resource to `lab1/state-infra/main.tf` in the repo:
+S3 request metrics filters match a key **prefix** (or object tags). A lock file is `<key>.tflock` — the distinguishing part is a **suffix**, and there is no suffix filter. So lock and unlock requests are counted inside the bucket-wide `PutRequests` figure alongside the state writes themselves, which is why the widget is titled for both.
 
-```hcl
-resource "aws_s3_bucket_metric" "lockfile_activity" {
-  bucket = aws_s3_bucket.terraform_state.id
-  name   = "lockfile-activity"
+Two ways to separate them if you need that in production:
 
-  filter {
-    prefix = ""    # Bucket-wide metrics; narrow to .tflock if you want lock-only data
-  }
-}
-```
-Cost: S3 Request Metrics are ~$0.30 per million requests monitored. Negligible for a lab environment.
+- **Tag the objects** and filter the metrics configuration on a tag. Terraform does not tag its lock files, so this needs a bucket policy or a Lambda on `s3:ObjectCreated:*`.
+- **Enable S3 data events** in CloudTrail and query by key suffix. That gives per-object detail rather than aggregate counts, at per-event cost.
 
-After adding this resource and running `terraform apply` in `lab1/state-infra/`, the State Lockfile Activity widget on the dashboard will populate within 5-10 minutes of any subsequent `terraform plan`/`apply`.
+Cost note: request metrics bill at CloudWatch custom-metric rates for metrics that receive data. One configuration on one low-traffic bucket is cents per day; leaving them on across many buckets is worth watching.
 
 ---
 

@@ -152,3 +152,22 @@ resource "aws_ssm_parameter" "app_config" {
     ignore_changes = [value]
   }
 }
+
+# ---------------------------------------------------------------
+# S3 Request Metrics
+# ---------------------------------------------------------------
+# S3 publishes storage metrics (size, object count) for free, but request
+# metrics -- GetRequests, PutRequests, and friends -- only exist once a
+# metrics configuration asks for them. Without this resource the state
+# bucket emits no request data at all, and Lab 4's two S3 dashboard
+# widgets have nothing to draw.
+#
+# "EntireBucket" is the name S3 itself uses for a whole-bucket
+# configuration. Filters match a key PREFIX, so there is no way to isolate
+# the `.tflock` objects by their suffix; lock and unlock activity shows up
+# inside the bucket-wide PutRequests count.
+
+resource "aws_s3_bucket_metric" "entire_bucket" {
+  bucket = aws_s3_bucket.terraform_state.id
+  name   = "EntireBucket"
+}

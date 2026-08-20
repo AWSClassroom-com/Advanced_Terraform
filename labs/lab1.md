@@ -277,6 +277,8 @@ The checkout team's near-miss happened because a junior engineer thought they we
     ```
     Review the plan, then type `yes` at the apply prompt. The apply creates an `aws_s3_bucket` named `<student_id>-terraform-state-<random6>` (the random suffix guarantees the name is globally unique — no two students can collide).
 
+    > **Notice `aws_s3_bucket_metric` in the plan.** S3 reports storage metrics for free, but request metrics such as `GetRequests` and `PutRequests` are opt-in: nothing records them until a metrics configuration asks for them. Turning it on here means every `terraform plan` and `apply` you run for the rest of the day leaves a measurable trace on this bucket, which is what Lab 4's dashboard reads. It is worth seeing the order of events: you have to decide to collect the data **before** the activity happens. Auditing is not something you can switch on afterwards and backfill.
+
     **Capture the bucket name** — you'll paste it into `lab1/networking`'s backend in Step 17, and into your own `terraform.tfvars` in Step 19:
 
     ```bash
