@@ -1,28 +1,14 @@
-# lab4-observability/dashboard.tf  (LabForge patched version 2026-05-15)
+# lab4-observability/dashboard.tf
 #
-# Drop-in replacement for the original dashboard.tf. Patches vs. the
-# previous version:
+# One aws_cloudwatch_dashboard resource. Its dashboard_body is a JSON
+# document, built here with jsonencode() so the widgets can reference
+# Terraform variables instead of being pasted in as a literal string.
 #
-#   1. S3 widget uses var.state_bucket_name (which already exists in
-#      variables.tf) instead of the hard-coded "${var.account}-terraform-state"
-#      pattern. This makes the widget actually populate when the bucket has
-#      a random suffix (Lab 1's bucket does).
+# Widgets are laid out on a 24-column grid: x and y are grid positions,
+# width and height are grid units. Rows are grouped by comment below.
 #
-#   2. The "DynamoDB Lock Operations" widget is replaced with an "S3 Lockfile
-#      PutObject" widget. Lab 1 uses Terraform 1.10+ S3 native locking
-#      (use_lockfile = true) — there is no DynamoDB table to monitor.
-#      Lockfile activity now shows up as PutObject calls on the state bucket
-#      with a key suffix of `.tflock`.
-#
-#   3. Region is now parameterised — every widget, console URL, and the
-#      dashboard_url output reads from var.region. Previously hardcoded
-#      to us-east-2 in 14 places, which broke any student NOT assigned
-#      us-east-2 ("No data" in every widget).
-#
-#   4. Header markdown now actually renders the account value. Previously
-#      "**Account:** **Region:** us-east-2 | ..." — two bold labels with no
-#      value between Account and Region. Now "**Account:** ${var.account}
-#      | **Region:** ${var.region} | ...".
+# Every region reference reads var.region, so the dashboard follows
+# wherever the class deploys.
 
 resource "aws_cloudwatch_dashboard" "terraform_ops" {
   dashboard_name = "${var.account}-terraform-operations"
@@ -172,8 +158,8 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         }
       },
 
-      # State Lockfile Activity — empty until Appendix A applies the
-      # aws_s3_bucket_metric filter named "lockfile-activity".
+      # State bucket PutRequests. Lock and unlock show up inside this
+      # total: request metrics filter on a key prefix, and .tflock is a suffix.
       {
         type   = "metric"
         x      = 12

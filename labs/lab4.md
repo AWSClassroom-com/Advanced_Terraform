@@ -263,9 +263,12 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
 10. **Review the Configuration Files**
 
+    The file is one resource, 250-odd lines of it, because every widget is spelled out in the `dashboard_body` JSON. Read one widget rather than the whole thing:
+
     ```bash
-    cat dashboard.tf | head -40
+    sed -n '/Row 1: CI\/CD Metrics/,/^      },/p' dashboard.tf
     ```
+    That is the shape every widget follows: a `type`, a position on the 24-column grid (`x`, `y`, `width`, `height`), and a `properties` block naming the metrics to plot.
 
     The dashboard provisions a single `aws_cloudwatch_dashboard` resource named `${account}-terraform-operations`. Its widgets monitor:
 
@@ -276,7 +279,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Pipeline Execution Counters | `AWS/CodePipeline`, `PipelineExecutionSucceeded` + `PipelineExecutionFailed` | Cumulative pass/fail for `${account}-terraform-pipeline` |
     | Pipeline Execution Time Series | Same metrics, stacked area | Trend over time |
     | State Bucket Operations | `AWS/S3`, `GetRequests` + `PutRequests` on `var.state_bucket_name` | Reads (plans) vs. writes (applies) on the state bucket |
-    | State Lockfile Activity | `AWS/S3`, `PutRequests` on `var.state_bucket_name` with FilterId `lockfile-activity` | Lock acquisition / release events (Terraform 1.10+ S3 native locking) |
+    | State Bucket PutRequests | `AWS/S3`, `PutRequests` on `var.state_bucket_name` with FilterId `EntireBucket` | State writes, including the `.tflock` lock and unlock |
     | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Logs Insights |
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
 
