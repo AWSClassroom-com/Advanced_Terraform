@@ -673,19 +673,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 > **Skip this task if you're running short on time** — proceed directly to Task 9 (Cleanup). The main lab is complete after Task 7. This bonus task demonstrates that swapping the deployed *payload* (EC2 → Lambda + API Gateway) requires changing **one line per environment** when the modules share an interface — and it gives students who finished early a tangible "modern serverless" experience to compare against the EC2 path.
 
-33. **Give the build role permission to create serverless resources**
-
-    The pipeline's CodeBuild role was scoped for the EC2 module. The serverless module also creates a Lambda execution role, a log group, a Lambda function, and an HTTP API, so the role needs `lambda:*`, `apigateway:*`, `logs:*`, and permission to create and pass an IAM role. Those grants ship in `lab3/pipeline/iam.tf`, but the role in AWS still has the old policy until you re-apply:
-
-    ```bash
-    cd ~/Advanced_Terraform/lab3/pipeline
-    terraform apply
-    ```
-    **Expected:** changes to `aws_iam_role_policy.codebuild` only. Type `yes`.
-
-    > **Skip this and Apply-Staging fails** with `AccessDenied` on `iam:CreateRole`, `apigateway:POST`, and a `logs:TagResource` message. The plan stage still succeeds, because a plan never calls those APIs -- the failure only appears once the apply runs.
-
-34. **Swap both environments to the serverless module**
+33. **Swap both environments to the serverless module**
 
     The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`student_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
 
@@ -707,7 +695,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Then make the same change in `environments/prod/main.tf`.
 
-35. **Commit, push, and verify the serverless deploy**
+34. **Commit, push, and verify the serverless deploy**
 
     ```bash
     git add environments/staging/main.tf environments/prod/main.tf
@@ -744,7 +732,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 9: Cleanup Through Pipeline (Optional but Recommended)
 
-36. **Trigger Destroy**
+35. **Trigger Destroy**
 
     The pipeline has no destroy stage. Its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
 
@@ -765,7 +753,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Edit the Terraform code to remove resources, push, and let pipeline apply the changes.
 
-37. **Verify Cleanup**
+36. **Verify Cleanup**
 
     Verify no instances remain (regardless of whether you ran the bonus or stayed on EC2):
 
@@ -791,7 +779,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     Both should return empty after destroy.
 
-38. **Delete the Task 5 secret and parameter**
+37. **Delete the Task 5 secret and parameter**
 
     These were created by CLI, not Terraform, so `terraform destroy` does not remove them. Secrets Manager bills $0.40/secret/month until the deletion window closes.
 
