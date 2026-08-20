@@ -37,13 +37,13 @@ resource "aws_iam_role_policy" "codebuild" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "CloudWatchLogs"
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
+        # Covers both the build's own log stream and the log groups Terraform
+        # creates for Lambda. Creating a tagged log group needs logs:TagResource
+        # on top of CreateLogGroup, and retention_in_days needs
+        # PutRetentionPolicy -- hence the wildcard rather than three actions.
+        Sid      = "CloudWatchLogs"
+        Effect   = "Allow"
+        Action   = "logs:*"
         Resource = "*"
       },
       {
@@ -70,9 +70,38 @@ resource "aws_iam_role_policy" "codebuild" {
           "ec2:*",
           "elasticloadbalancing:*",
           "autoscaling:*",
-          "ssm:*"
+          "ssm:*",
+          # Task 8 (serverless bonus) swaps the EC2 module for Lambda +
+          # API Gateway HTTP API. Without these the Apply-Staging stage fails.
+          "lambda:*",
+          "apigateway:*"
         ]
         Resource = "*"
+      },
+      {
+        # The serverless module creates its own Lambda execution role and passes
+        # it to the function, so the build role must be able to create, tag,
+        # attach policies to, and pass a role. Scoped to this student's roles so
+        # the build cannot touch anyone else's.
+        Sid    = "LambdaExecutionRoleManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:PassRole",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:ListRoleTags",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy"
+        ]
+        Resource = "arn:aws:iam::*:role/${var.student_id}-*"
       },
       {
         # Task 5 adds an `env: secrets-manager:` block to the apply buildspec.
