@@ -234,7 +234,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     In the console, click **Save**, name it `userXX-terraform-activity`, and click **Save** again.
 
-    The CLI equivalent stores the same thing, which is how a saved query gets into version control instead of living in one person's browser:
+    The CLI stores the same object:
 
     ```bash
     aws logs put-query-definition --region us-east-2 \
@@ -245,7 +245,9 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | sort @timestamp desc
     | limit 50'
     ```
-    Either way your team can re-run it without remembering the syntax.
+    > **Saved queries are not private.** CloudWatch stores them per Region, not per user: anyone with CloudWatch Logs access in this Region sees every saved query in it. That is why the name starts with your student ID, and it is also what makes saved queries useful to a team rather than to one person.
+
+    The console button and the CLI call create the same thing. What the CLI adds is repeatability: the command can live in a script, so a standard set of audit queries can be recreated in a new account without anyone clicking through a console.
 
 ---
 
