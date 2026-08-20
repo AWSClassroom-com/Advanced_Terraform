@@ -318,14 +318,14 @@ Widen the time range selector first — it defaults to a narrow window, and Labs
 In order of likelihood:
 
 1. **Metrics not populated yet** — wait 5-10 minutes after the source resource emits its first metric.
-2. **State Lockfile Activity widget** — empty until you apply Appendix A. The `FilterId = "lockfile-activity"` referenced by this widget depends on an `aws_s3_bucket_metric` resource that's not deployed by the default `dashboard.tf`. Apply Appendix A or accept the empty widget.
+2. **Both S3 widgets** (`State Bucket Operations` and `State Lockfile Activity`) — empty until you apply Appendix A. S3 publishes `GetRequests`/`PutRequests` only when a **request metrics configuration** exists on the bucket, and a new bucket has none. That configuration is the `aws_s3_bucket_metric` resource in Appendix A, which supplies both the `EntireBucket` and `lockfile-activity` filter IDs the widgets reference. Without it these two stay empty no matter how much Terraform activity you generate. Storage metrics are free and automatic; request metrics are opt-in and billed.
 3. **CodeBuild / Pipeline widgets** — only populate after Lab 3's pipeline has actually executed at least once. If Lab 3 was never deployed (or the pipeline never ran), these widgets will stay empty.
 4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "user07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
-5. **Wrong region** — if `dashboard.tf`'s hard-coded `us-east-2` doesn't match where your Lab 3 pipeline actually ran, every widget will be empty (the metrics live in your real region). See the Step 12 region callout.
+5. **Wrong region** — `dashboard.tf` reads `var.region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
 
-    ### Logs Insights query returns nothing
+### Logs Insights query returns nothing
 
-    CloudTrail may not deliver to CloudWatch Logs in this account. Use Event history (Task 1) instead. The same audit story can be told from Event history alone — Logs Insights is just faster for repeated queries.
+The classroom account has no CloudTrail trail, so there is no log group to query and the dropdown is empty. Use Event history (Task 1) instead. The same audit story can be told from Event history alone; Logs Insights is what you would reach for once a trail exists.
 
 ---
 
