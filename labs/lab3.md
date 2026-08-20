@@ -360,8 +360,8 @@ By the end of this lab, you will:
 
     When pipeline reaches **Plan-Staging**:
 
-    1. Click **Details** on the Plan-Staging stage
-    2. Click **View logs** to see the CodeBuild output
+    1. In the **Plan-Staging** box, click the action name **Terraform-Plan-Staging**
+    2. That opens the execution's **Logs** tab with the CodeBuild output already showing
     3. Scroll to find the plan output:
 
     ```
@@ -381,9 +381,10 @@ By the end of this lab, you will:
 
     When pipeline reaches **Approve-Staging**:
 
-    1. Click **Review**
-    2. Comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
-    3. Click **Approve**
+    1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
+    2. In the **Review** dialog, leave **Decision** set to **Approve**
+    3. Optionally add a comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
+    4. Click **Submit**
 
     Watch **Apply-Staging** execute. This takes ~2-3 minutes as the VPC and EC2 are created.
 
@@ -396,7 +397,7 @@ By the end of this lab, you will:
     aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region <bucket-region> | \
         jq -r '.outputs.public_ip.value'
     ```
-    Replace `userXX-terraform-state-SUFFIX` with your bucket name and `<bucket-region>` with the region your Lab 1 bucket lives in. (Alternatively, find the IP in the CodeBuild logs: Apply-Staging → View logs → scroll to the `terraform apply` outputs at the end.)
+    Replace `userXX-terraform-state-SUFFIX` with your bucket name and `<bucket-region>` with the region your Lab 1 bucket lives in. (Alternatively, find the IP in the CodeBuild logs: click **Terraform-Apply-Staging** in the Apply-Staging box, then scroll to the `terraform apply` outputs at the end.)
 
     **Verify the web server is up:**
 
@@ -584,17 +585,18 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     After staging apply completes, the pipeline automatically runs **Plan-Production**:
 
-    1. Click **Details** on Plan-Production
-    2. View the plan in CodeBuild logs
+    1. In the **Plan-Production** box, click the action name **Terraform-Plan-Prod**
+    2. The **Logs** tab opens on the CodeBuild output
     3. Verify it's creating the same 7 resources in **us-west-2**
 
 29. **Approve Production Deployment**
 
     When pipeline reaches **Approve-Production**:
 
-    1. Click **Review**
-    2. Comment: "Staging verified. Approving production deployment to us-west-2"
-    3. Click **Approve**
+    1. In the **Approve-Production** box, click the action name **Approve-Production-Deploy**
+    2. In the **Review** dialog, leave **Decision** set to **Approve**
+    3. Optionally add a comment: "Staging verified. Approving production deployment to us-west-2"
+    4. Click **Submit**
 
     Watch **Apply-Production** execute.
 
