@@ -53,7 +53,7 @@ You need to demonstrate:
 |---------|----------------|
 | **CloudTrail** | Records every AWS API call -- immutable audit trail |
 | **User Agent** | Terraform sends a `Terraform/<version>` token in user agent — distinguishes from console |
-| **Source IP** | `codebuild.amazonaws.com` for pipeline-originated calls vs. your IP for laptop-originated |
+| **Source IP** | The build container's private address for pipeline-originated calls vs. a public IP for calls made by hand |
 | **userIdentity.arn** | Identifies which CodeBuild project (or which IAM user) made the call |
 
 ---
@@ -76,15 +76,21 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     - Lookup attribute: **Event name**
     - Value: `PutParameter`
 
-    **Filter 2: By Pipeline Role** (this only works if Lab 3's pipeline has executed)
+    **Filter 2: By Pipeline Session** (this only works if Lab 3's pipeline has executed)
     - Lookup attribute: **User name**
-    - Value: `userXX-codebuild-terraform-role` *(replace `userXX` with your assigned student ID — same value you used for `student_id` in Labs 1 and 3)*
+    - Value: the session name from one of your Filter 1 events, for example `AWSCodeBuild-83cb90b3-c7dd-4d7a-ad63-54e2ef68d46d`
 
-    **Filter 3: State Object Writes**
+    Open a Filter 1 event first, copy the part of `userIdentity.arn` that follows the role name, and search on that.
+
+    > **Why not search for the role name?** Event history's **User name** attribute matches the *session* name, not the role. A CodeBuild session is named `AWSCodeBuild-<build id>` and changes on every build, so event history cannot show you everything one role has done. Task 2's Logs Insights query can, because it filters on `userIdentity.arn`, which contains the role name.
+
+    **Filter 3: State Bucket Changes**
     - Lookup attribute: **Event name**
-    - Value: `PutObject`
+    - Value: `CreateBucket`, then try `PutBucketVersioning`
 
-    For Filter 3, look for events where the **Resource name** column includes your state bucket (`userXX-terraform-state-SUFFIX`).
+    Both come from Lab 1's `terraform apply`. Look for events where the **Resource name** column includes your state bucket (`userXX-terraform-state-SUFFIX`).
+
+    > **Where are the state file writes?** They are not here. Every `terraform apply` wrote `PutObject` to the state bucket, but object-level calls are **data events**, and event history records **management events** only. Searching `PutObject` returns nothing no matter how much Terraform activity you have. Capturing data events needs a trail with S3 data event logging switched on, which costs per event and is off by default. It is a common audit gap: the bucket's *configuration* changes are recorded, the *object* writes are not.
 
     > **If you see no events:** CloudTrail Event history retains the most recent 90 days of management events for free, but events take **up to 15 minutes** to appear after the underlying API call. If Labs 1-3 finished within the last 15 minutes, wait and refresh.
 
@@ -98,17 +104,17 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     |-------|---------|-------------------|
     | `userIdentity.arn` | `arn:aws:sts::<account>:assumed-role/userXX-codebuild-terraform-role/<session>` | Which CodeBuild role was active for this call |
     | `userAgent` | A string containing `APN/1.0 HashiCorp/1.0 Terraform/1.10.x` | Confirms a Terraform-originated operation |
-    | `sourceIPAddress` | `codebuild.amazonaws.com` (when CodeBuild made the call directly) or a public IP if from a workstation | Pipeline vs. manual differentiation |
+    | `sourceIPAddress` | A private address such as `10.0.94.209` when Terraform ran inside CodeBuild, or a public IP when it ran from the lab EC2 instance | Weak signal on its own; see the note below |
     | `eventTime` | `2026-05-03T14:33:45Z` | Exact UTC timestamp |
 
-    > **Reality check on `sourceIPAddress`:** When an API call originates from inside an AWS-managed service (like CodeBuild) and is signed by an assumed role, `sourceIPAddress` typically appears as the service's hostname (e.g., `codebuild.amazonaws.com`). When the same role is assumed from a workstation, `sourceIPAddress` will be the workstation's public IP. CloudTrail doesn't lie about this — but the value depends on **where the SDK/CLI ran**, not just **which role signed**.
+    > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, not which service orchestrated it. Terraform running inside a CodeBuild container signs with the CodeBuild role but reports the container's private address, so you will see something like `10.0.94.209` rather than `codebuild.amazonaws.com`. Some AWS services do report their own hostname, which is why the field looks inconsistent across events. For telling pipeline activity from manual activity, `userIdentity.arn` and `userAgent` are the reliable fields.
 4. **Compare Pipeline vs. Console Activity**
 
     Find two events of the same type (`PutParameter` is a good one) and compare:
 
     | Field | Pipeline activity | Console / CLI activity |
     |-------|-------------------|------------------------|
-    | `sourceIPAddress` | `codebuild.amazonaws.com` | Your public IP, or `console.amazonaws.com` for some console-routed calls |
+    | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP, or `console.amazonaws.com` for some console-routed calls |
     | `userAgent` | Contains `Terraform/1.10.x` | Contains `aws-cli/<version>` or browser User-Agent strings via console |
     | `userIdentity.arn` | Assumed-role of the CodeBuild role | Your IAM user ARN |
 
@@ -149,8 +155,8 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
 
     | @timestamp | eventName | userIdentity.arn | sourceIPAddress |
     |---|---|---|---|
-    | 2026-05-14 15:42:11 | PutObject | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
-    | 2026-05-14 15:42:09 | GetBucketVersioning | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/apply-staging | codebuild.amazonaws.com |
+    | 2026-05-14 15:42:11 | PutParameter | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
+    | 2026-05-14 15:42:09 | CreateLogGroup | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
     | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/user07 | 52.x.x.x |
 
     The mix is what you want to see — most rows should have a `codebuild-terraform-role` ARN (= pipeline-driven); a row with your IAM-user ARN (= someone ran `terraform apply` from their laptop, breaking the Golden Rule) is the kind of anomaly the lab's audit story is built around.
@@ -322,7 +328,7 @@ In order of likelihood:
 ## Knowledge Check
 
 **Q1.** How do you tell whether a Terraform-originated change came through the pipeline or from someone's laptop?
-*A: Inspect `sourceIPAddress` (`codebuild.amazonaws.com` for pipeline; user public IP for laptop) and `userIdentity.arn` (CodeBuild assumed-role for pipeline; IAM user for laptop). Both should agree — if they disagree, that's an event worth investigating.*
+*A: Inspect `userIdentity.arn` (the CodeBuild assumed-role for pipeline activity; your instance role or IAM user for manual activity) and `userAgent` (`Terraform/...` from the pipeline; `aws-cli/...` from a shell). `sourceIPAddress` is a weaker signal, because it reports where the SDK call was made from rather than which service orchestrated it.*
 
 **Q2.** A CloudTrail event shows `userIdentity.arn = arn:...:assumed-role/userXX-codebuild-terraform-role/apply-staging`. How do you trace it back to the human who triggered the change?
 *A: Note the `eventTime`. In CodePipeline, find the execution that ran during that window (the `apply-staging` action specifically). From the pipeline execution, follow back to the source revision (CodeCommit commit). The commit author is the human responsible.*
@@ -335,7 +341,7 @@ In order of likelihood:
 ## Lab Completion Checklist
 
 - [ ] Navigated to CloudTrail Event history
-- [ ] Ran the three lookup filters (Event name `PutParameter`, User name `userXX-codebuild-terraform-role`, Event name `PutObject`)
+- [ ] Ran the three lookup filters (Event name `PutParameter`, User name `AWSCodeBuild-<build id>`, Event name `CreateBucket`)
 - [ ] Examined a CloudTrail event JSON and identified `userIdentity.arn`, `userAgent`, `sourceIPAddress`, `eventTime`
 - [ ] Compared a pipeline event vs. a console/CLI event side by side
 - [ ] Ran the two Logs Insights queries (or skipped Task 2 with the documented reason)
