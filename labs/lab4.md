@@ -293,11 +293,11 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     Edit `terraform.tfvars` and set all three required variables:
 
     ```hcl
-    region            = "us-east-2"                            # Whatever region your instructor assigned (e.g., us-east-2)
-    account           = "userXX"                            # IMPORTANT: same value you used as student_id in Labs 1 and 3 — see naming-convention callout below
-    state_bucket_name = "userXX-terraform-state-SUFFIX"     # Exact bucket name from Lab 1 outputs
+    region            = "us-east-2"                        # Whatever region your instructor assigned
+    account           = "user07"                           # Same value you used as student_id in Labs 1 and 3
+    state_bucket_name = "user07-terraform-state-ab12cd"    # Exact bucket name from Lab 1 outputs
     ```
-    > **Naming convention.** Lab 4's stack declares its input variable as `account` (matching Lab 2's lean VPC pattern), but the dashboard's CloudWatch widgets reference Lab 3 resources by name — e.g., `${var.account}-terraform-validate`. Lab 3 created those resources using `var.student_id`. **For the dashboard to actually find Lab 3's CodeBuild projects and pipeline, set `account` here to the same value you used as `student_id` in Labs 1 and 3.** The example file ships with `account = "userxx"` as a placeholder — overwrite it with your `userXX` value.
+    > **Naming convention.** Lab 4's stack declares its input variable as `account` (matching Lab 2's lean VPC pattern), but the dashboard's CloudWatch widgets reference Lab 3 resources by name — e.g., `${var.account}-terraform-validate`. Lab 3 created those resources using `var.student_id`. **For the dashboard to actually find Lab 3's CodeBuild projects and pipeline, set `account` here to the same value you used as `student_id` in Labs 1 and 3.** The example file ships with `account = "userXX"`; replace it with your real ID, such as `user07`.
 
     > **Bucket name handling:** `dashboard.tf` uses `var.state_bucket_name` directly, so the S3 widgets read from whatever bucket name you paste — Lab 1's random-suffix bucket works as-is, no edits to the dashboard code required.
 
