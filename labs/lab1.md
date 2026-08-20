@@ -655,7 +655,7 @@ When something breaks in production, you'll need to read the state file directly
 
     ```bash
     # Don't run this for practice — read about it.
-    terraform force-unlock "<LOCK_ID>"
+    terraform force-unlock <LOCK_ID>
     ```
     The `<LOCK_ID>` appears in the lock-conflict error message that the next caller sees. You can also see the lock object in S3:
 
@@ -896,7 +896,7 @@ terraform workspace select dev
 
 If lock persists after operation completed:
 ```bash
-terraform force-unlock "<LOCK_ID>"
+terraform force-unlock <LOCK_ID>
 ```
 Use with caution -- only when certain no operation is running.
 

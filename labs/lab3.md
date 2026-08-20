@@ -393,7 +393,7 @@ By the end of this lab, you will:
 
     ```bash
     # Get the staging public IP from the staging state file.
-    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region "<bucket-region>" | \
+    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region <bucket-region> | \
         jq -r '.outputs.public_ip.value'
     ```
     Replace `userXX-terraform-state-SUFFIX` with your bucket name and `<bucket-region>` with the region your Lab 1 bucket lives in. (Alternatively, find the IP in the CodeBuild logs: Apply-Staging → View logs → scroll to the `terraform apply` outputs at the end.)
@@ -401,7 +401,7 @@ By the end of this lab, you will:
     **Verify the web server is up:**
 
     ```bash
-    curl "http://<STAGING_PUBLIC_IP>"
+    curl http://<STAGING_PUBLIC_IP>
     ```
     **Expected output:**
 
@@ -586,13 +586,13 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     Same flow as Step 20, but reading from the prod state key (`pipeline/prod/...`):
 
     ```bash
-    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/prod/terraform.tfstate - --region "<bucket-region>" | \
+    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/prod/terraform.tfstate - --region <bucket-region> | \
         jq -r '.outputs.public_ip.value'
     ```
     Then curl the prod web server:
 
     ```bash
-    curl "http://<PROD_PUBLIC_IP>"
+    curl http://<PROD_PUBLIC_IP>
     ```
     **Expected output:**
 
@@ -664,7 +664,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     Verify the new endpoint. The `api_url` output replaces `public_ip` in the new state:
 
     ```bash
-    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region "<bucket-region>" | \
+    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region <bucket-region> | \
         jq -r '.outputs.api_url.value'
     ```
     Curl the URL:
