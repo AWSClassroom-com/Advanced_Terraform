@@ -499,7 +499,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     cd ~/Advanced_Terraform/lab1/state-infra
     ```
 
-    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count` — the whole Part D block stays dormant until `state_bucket_name` is set (you'll set it in Step 19):
+    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count`: the whole Part D block stays dormant until `state_bucket_name` is set (you'll set it in Step 19):
 
     ```hcl
     data "terraform_remote_state" "networking" {
@@ -834,9 +834,9 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     cd ~/Advanced_Terraform/lab1/networking
     terraform destroy -auto-approve
     ```
-    Part D and the `lab1/directories` comparison are the only things that read this state, and both are finished — so there is nothing left to keep it for.
+    Part D and the `lab1/directories` comparison are the only things that read this state, and both are finished, so there is nothing left to keep it for.
 
-    > **Doesn't Lab 2 need this VPC?** No. Lab 2 imports either your Day 1-2 VPC and `allow-http-ssh` security group, or the lean stack it deploys itself in Task 1 Option B — both at `192.168.0.0/20`. This networking VPC is `10.20.0.0/16`, and its security group uses inline `ingress`/`egress` blocks rather than the separate rule resources Lab 2 imports, so it can't serve as an import source. Destroy it here and reclaim the VPC quota.
+    > **Doesn't Lab 2 need this VPC?** No. Lab 2 imports either your Day 1-2 VPC and `allow-http-ssh` security group, or the lean stack it deploys itself in Task 1 Option B, both at `192.168.0.0/20`. This networking VPC is `10.20.0.0/16`, and its security group uses inline `ingress`/`egress` blocks rather than the separate rule resources Lab 2 imports, so it can't serve as an import source. Destroy it here and reclaim the VPC quota.
 
 34. **Clean up workspaces**
 

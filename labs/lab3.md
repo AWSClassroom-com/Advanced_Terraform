@@ -137,7 +137,7 @@ By the end of this lab, you will:
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Edit `terraform.tfvars`. Use the **same concrete ID you used in Lab 1** — the validator accepts `userNN` only, so `userXX` is rejected and `user07` is the shape it wants. Using a different ID than Lab 1 breaks the shared naming Lab 4's dashboard depends on:
+    Edit `terraform.tfvars`. Use the **same concrete ID you used in Lab 1**. The validator accepts `userNN` only, so `userXX` is rejected and `user07` is the shape it wants. Using a different ID than Lab 1 breaks the shared naming Lab 4's dashboard depends on:
 
     ```hcl
     student_id        = "user07"                         # ← REPLACE 07 with YOUR assigned student number (same value you used in Lab 1)
@@ -182,7 +182,7 @@ By the end of this lab, you will:
 
     1. AWS Console → **CodePipeline** → **Pipelines**
     2. Confirm you're in the **staging region** (top-right region picker) — that's where the pipeline lives. The `apply-prod` stage deploys *to* the prod region, but the pipeline itself runs in the staging region.
-    3. Click your pipeline (`userXX-terraform-pipeline` — the `pipeline_name` from the output above)
+    3. Click your pipeline (`userXX-terraform-pipeline`, the `pipeline_name` from the output above)
     4. You'll see the 8 stages laid out. They'll currently be in a failed/idle state — the CodeCommit repo is empty, so the source stage has nothing to flow through. Task 3 fixes that.
 
 ---
@@ -303,7 +303,7 @@ By the end of this lab, you will:
     | `userXX` | your assigned IAM username (e.g., `user07`) |
     | `userXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `user07-terraform-state-ab12cd`) |
 
-    > **What if you miss one?** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `userXX` fails the pipeline's **Validate** stage with an error naming the file and line — it won't silently deploy resources named `userXX-staging-vpc`.
+    > **What if you miss one?** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `userXX` fails the pipeline's **Validate** stage with an error naming the file and line. It won't silently deploy resources named `userXX-staging-vpc`.
 
     The places that need changing in `environments/staging/main.tf`:
 
@@ -477,7 +477,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     phases:
       ...
     ```
-    Replace `userXX` with your assigned student ID — the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
+    Replace `userXX` with your assigned student ID, the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
 
     > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue`. If you scope it down later, the `env:` block is the first thing to fail, before any build command runs.
 
@@ -501,7 +501,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 25. **Declare and consume the variables in the staging wrapper**
 
-    The variables have to be declared in the directory Terraform actually runs in — that's `environments/staging/`, not the repo root. Open `environments/staging/main.tf` in your `webapp-repo` clone and add:
+    The variables have to be declared in the directory Terraform actually runs in, which is `environments/staging/`, not the repo root. Open `environments/staging/main.tf` in your `webapp-repo` clone and add:
 
     ```hcl
     variable "db_host" {
@@ -548,14 +548,14 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
 27. **Verify in the Plan-Staging build log**
 
-    In the browser, open the **plan-staging** build log — in the **Plan-Staging** box, click the action name **Terraform-Plan-Staging**. (Plan, not apply: the `env:` block you added lives in the plan project.)
+    In the browser, open the **plan-staging** build log. In the **Plan-Staging** box, click the action name **Terraform-Plan-Staging**. (Plan, not apply: the `env:` block you added lives in the plan project.)
 
     Look for this line near the top, before the first build command:
 
     ```
     [Container] ... Decrypting parameter store environment variables
     ```
-    That line is the only confirmation the log gives. **CodeBuild does not print the resolved values** — not the Parameter Store hostname, and not the Secrets Manager password.
+    That line is the only confirmation the log gives. **CodeBuild does not print the resolved values**: not the Parameter Store hostname, and not the Secrets Manager password.
 
     Scroll down to the `terraform plan` output and find the parameter being created:
 
@@ -597,7 +597,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```
     That is the value you stored in Parameter Store in Step 21: CodeBuild fetched it, Terraform received it as `TF_VAR_db_host`, and the apply wrote it into a real resource.
 
-    > **`ParameterNotFound`?** Apply-Staging has not finished. The parameter is created by the apply, not the plan — check the pipeline and wait for the **Apply-Staging** box to go green, then re-run the command.
+    > **`ParameterNotFound`?** Apply-Staging has not finished. The parameter is created by the apply, not the plan. Check the pipeline and wait for the **Apply-Staging** box to go green, then re-run the command.
 
     > **In production, scope tighter.** The CodeBuild role in `lab3/pipeline/iam.tf` grants `ssm:*` and `secretsmanager:GetSecretValue` on `*`. For real workloads, scope `secretsmanager:GetSecretValue` to the specific secret ARN and `ssm:GetParameter*` to the specific parameter path prefix. Use `aws:ResourceTag` condition keys to limit by environment.
 
@@ -734,7 +734,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 35. **Trigger Destroy**
 
-    The pipeline has no destroy stage — its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
+    The pipeline has no destroy stage. Its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
 
     **Option A: Manual destroy from CLI**
 

@@ -177,13 +177,13 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     - **VPC stack** — `vpc_id`, `subnet_id`, `internet_gateway_id`, `route_table_id`
     - **Security group + rules** — `security_group_id`, `sg_rule_http_id`, `sg_rule_ssh_id`, `sg_rule_egress_id`
 
-    Also capture your **state bucket name and its region** — this is the bucket **Lab 1 created** (`terraform output state_bucket_name` in `lab1/state-infra`). You'll pass both at `terraform init` time in Task 2:
+    Also capture your **state bucket name and its region**. This is the bucket **Lab 1 created** (`terraform output state_bucket_name` in `lab1/state-infra`). You'll pass both at `terraform init` time in Task 2:
 
     ```bash
     aws s3 ls | grep "${STUDENT}-terraform-state"
     aws s3api get-bucket-location --bucket "<your-bucket-name>" --query 'LocationConstraint' --output text
     ```
-    The bucket name looks like `user07-terraform-state-x8k2m4`. The bucket's region **may or may not match `$DEPLOY_REGION`** — the state bucket and the resources you are importing are independent of each other.
+    The bucket name looks like `user07-terraform-state-x8k2m4`. The bucket's region **may or may not match `$DEPLOY_REGION`**. The state bucket and the resources you are importing are independent of each other.
 
 ---
 
@@ -327,7 +327,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     │   `customer_owned_ipv4_pool,map_customer_owned_ip_on_launch,outpost_arn` must be specified
     ```
 
-    Six errors, but only three kinds of problem — all caused by generation emitting arguments it should have omitted:
+    Six errors, but only three kinds of problem, all caused by generation emitting arguments it should have omitted:
 
     | Problem | Errors above | What happened |
     |---|---|---|
@@ -339,7 +339,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 13. **Examine the generated file**
 
-    The file starts with the security group rules — the smallest resources here, which show none of the problems. Print the subnet instead; it has all of them at once:
+    The file starts with the security group rules, the smallest resources here, which show none of the problems. Print the subnet instead; it has all of them at once:
 
     ```bash
     sed -n '/^resource "aws_subnet"/,/^}/p' generated.tf
@@ -357,7 +357,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 14. **Compare the generated version against the cleaned one**
 
-    `../network.tf` contains the same subnet after cleanup — the work `-generate-config-out` leaves for you. Put the two side by side:
+    `../network.tf` contains the same subnet after cleanup: the work `-generate-config-out` leaves for you. Put the two side by side:
 
     ```bash
     sed -n '/^resource "aws_subnet"/,/^}/p' generated.tf  > /tmp/subnet-generated.tf
@@ -380,7 +380,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
     The tags follow the same pattern: generated hardcodes `Name = "user07-public-subnet-a"`; the cleaned version uses `Name = "${var.account}-public-subnet-a"`, so the same file works for every student.
 
-    > **Note:** nothing in the generated file is wrong — it is an accurate snapshot of what exists right now. Cleanup turns that snapshot into configuration: references for dependencies, variables for reuse, and no computed attributes.
+    > **Note:** nothing in the generated file is wrong. It is an accurate snapshot of what exists right now. Cleanup turns that snapshot into configuration: references for dependencies, variables for reuse, and no computed attributes.
 
 15. **Clean up the demo + return to the real import dir**
 
@@ -475,7 +475,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
 
 21. **Add `prevent_destroy` to the VPC**
 
-    Edit `network.tf` — in the `lifecycle` block on `aws_vpc.custom-vpc`, uncomment the `prevent_destroy` line (leave the `lifecycle {` and `}` lines alone — they're already active):
+    Edit `network.tf`. In the `lifecycle` block on `aws_vpc.custom-vpc`, uncomment the `prevent_destroy` line (leave the `lifecycle {` and `}` lines alone — they're already active):
 
     ```hcl
     resource "aws_vpc" "custom-vpc" {
@@ -488,7 +488,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     ```
 22. **Add `prevent_destroy` to the security group**
 
-    Edit `security-group.tf` — same one-line change: uncomment `prevent_destroy` inside the `lifecycle` block on `aws_security_group.allow-http-ssh`:
+    Edit `security-group.tf`. Same one-line change: uncomment `prevent_destroy` inside the `lifecycle` block on `aws_security_group.allow-http-ssh`:
 
     ```hcl
     resource "aws_security_group" "allow-http-ssh" {
@@ -669,7 +669,7 @@ Expect the same cleanup work afterwards as you saw with `-generate-config-out` i
 *A: Some AWS resources have no single primary identifier and Terraform uses a composite of their parents to import them. For route table associations, the import format is `<subnet-id>/<route-table-id>`. The `rtbassoc-` ID is what AWS returns AFTER the resource exists; the COMPOUND ID is what Terraform uses to find it.*
 
 **Q3.** Why did this lab deliberately NOT import the S3 state bucket?
-*A: Two reasons. (1) The bucket is already managed by `lab1/state-infra`'s state — importing it into a second state would create dual-management, where two states each think they own the resource and either could break the other. (2) State buckets hold the state files for every Terraform project you've built — destroying one (or accidentally drifting it) means losing access to all of that work. Even with `prevent_destroy`, you generally don't experiment with state buckets in import labs. The right move is to leave the bucket under `lab1/state-infra`'s management and never touch it from a secondary state.*
+*A: Two reasons. (1) The bucket is already managed by `lab1/state-infra`'s state, and importing it into a second state would create dual-management, where two states each think they own the resource and either could break the other. (2) State buckets hold the state files for every Terraform project you've built — destroying one (or accidentally drifting it) means losing access to all of that work. Even with `prevent_destroy`, you generally don't experiment with state buckets in import labs. The right move is to leave the bucket under `lab1/state-infra`'s management and never touch it from a secondary state.*
 
 ---
 
