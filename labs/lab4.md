@@ -174,9 +174,10 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
 7. **Run a Terraform Activity Query**
 
-    Replace the lines below `SOURCE` with this, then click **Run** (or Ctrl+Enter):
+    Select everything in the editor, paste this over it, then click **Run** (or Ctrl+Enter):
 
     ```
+    SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
     fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
     | filter userAgent like /Terraform/
     | sort @timestamp desc
@@ -196,16 +197,17 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
 8. **Find the state file writes event history could not show**
 
-    In Task 1, searching event history for `PutObject` returned nothing. Those calls are data events, and event history records management events only. The trail captures them, so they are queryable here:
+    In Task 1, searching event history for `PutObject` returned nothing. Those calls are data events, and event history records management events only. The trail captures them, so they are queryable here. Paste this over the whole editor:
 
     ```
+    SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
     fields @timestamp, eventName, requestParameters.key, userIdentity.arn
     | filter eventSource = "s3.amazonaws.com"
     | filter requestParameters.bucketName = "userXX-terraform-state-SUFFIX"
     | sort @timestamp desc
     | limit 20
     ```
-    Replace the bucket name with your own from Lab 1, keeping the `SOURCE` line above.
+    Replace the bucket name with your own from Lab 1.
 
     **Expected:** `PutObject`, `GetObject`, and `DeleteObject` rows naming the object key — your state files at `env:/dev/lab1-app/terraform.tfstate` and `pipeline/staging/terraform.tfstate`, and the `.tflock` objects that appear and disappear around every apply.
 
@@ -213,7 +215,10 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
 9. **Run a Resource-Scoped Query**
 
+    Again, paste over the whole editor:
+
     ```
+    SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
     fields @timestamp, eventName, requestParameters.name
     | filter eventSource = "ssm.amazonaws.com"
     | filter eventName in ["PutParameter", "DeleteParameter"]
@@ -221,7 +226,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | sort @timestamp desc
     | limit 20
     ```
-    Replace `userXX` with your assigned student ID, again keeping the `SOURCE` line. This narrows to SSM parameter operations on resources whose name contains your ID.
+    Replace `userXX` with your assigned student ID. This narrows to SSM parameter operations on resources whose name contains your ID.
 
     **Expected result** (sample):
 
