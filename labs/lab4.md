@@ -68,7 +68,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     2. Search for **CloudTrail**.
     3. Click **Event history** in the left sidebar.
 
-    > **Expect an AccessDenied banner on the way in.** CloudTrail opens on its **Dashboard** page, which queries CloudTrail Lake and Insights. Your classroom account grants `cloudtrail:LookupEvents` but not those, so the Dashboard shows `AccessDeniedException: You don't have permissions to access this resource`. Nothing is wrong with your account. Click **Event history** and it works normally. Everything in this lab uses Event history.
+    > **AccessDenied on the CloudTrail Dashboard is expected.** That page needs permissions this account does not grant. Click **Event history**; it works normally.
 
 2. **Filter for Terraform Activity**
 
@@ -80,7 +80,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     Both come from Lab 1's `terraform apply`. Look for events where the **Resource name** column includes your state bucket (`userXX-terraform-state-SUFFIX`).
 
-    > **Where are the state file writes?** They are not here. Every `terraform apply` wrote `PutObject` to the state bucket, but object-level calls are **data events**, and event history records **management events** only. Searching `PutObject` returns nothing no matter how much Terraform activity you have. Capturing data events needs a trail with S3 data event logging switched on, which costs per event and is off by default. It is a common audit gap: the bucket's *configuration* changes are recorded, the *object* writes are not.
+    > **Where are the state file writes?** Not here. Object-level calls are **data events**, and event history records management events only. Searching `PutObject` returns nothing however much Terraform you run. Task 2 picks this up.
 
     **Filter 2: By Pipeline Role**
     - Lookup attribute: **User name**
@@ -88,7 +88,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     **Expected:** no results. That is not a mistake in your setup.
 
-    > **Why does the role name find nothing?** The **User name** attribute matches the *session* name, not the role. Each CodeBuild session is named `AWSCodeBuild-<build id>` and changes on every build, so event history cannot answer "show me everything this role did". You will see the session name inside `userIdentity.arn` in the next step, and searching that exact string does return the events for that one build. Answering the question properly is what Task 2's Logs Insights query is for: it filters on `userIdentity.arn`, which contains the role name.
+    > **Why does the role name find nothing?** **User name** matches the *session*, not the role, and CodeBuild names a session `AWSCodeBuild-<build id>` that changes every build. Task 2 filters on `userIdentity.arn`, which does hold the role.
 
     **Filter 3: SSM Parameter Changes**
     - Lookup attribute: **Event name**
@@ -129,7 +129,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     | `userAgent` | Contains `Terraform/1.15.x` | Contains `aws-cli/<version>` |
     | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP |
 
-    > **Neither one is an IAM user.** Both are assumed roles: the pipeline runs as its CodeBuild role, and your CLI runs as the instance profile attached to the lab EC2 instance. The event tells you which **role** acted, not which **person**. Getting to the person is a second step, from the role plus the timestamp plus who had access to that instance.
+    > **Neither one is an IAM user.** Both are assumed roles: the pipeline's CodeBuild role, and the instance profile on your lab VM. The event names the *role* that acted, not the person.
 
     > **Auditor's question answered:** *"Were all production changes made through the pipeline?"*
     >
@@ -156,9 +156,9 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     ```
     Line 1 is doing the work that a dropdown used to do. `SOURCE` names the log group inside the query and sets the window, so there is nothing to pick and no time range to set. The rest returns the 50 most recent events whose user agent contains "Terraform" — everything any Terraform binary did, whichever principal ran it.
 
-    > **Where this log group came from.** Event history is always on, but it is not a log group and cannot be queried here. Delivering events to CloudWatch Logs requires a **trail**, which your instructor created once for the class. It captures S3 **data events** as well as management events, which is what makes the next step possible.
+    > **Where this log group came from.** Event history is not a log group and cannot be queried here. Delivering to CloudWatch Logs needs a **trail**, which your instructor created for the class. It captures data events too.
 
-    > **The log group is shared by the whole class.** An unfiltered query returns everyone's activity. Filtering on your own bucket or student ID is what narrows it to you.
+    > **The log group is shared by the whole class.** Filter on your own bucket or student ID.
 
     **Expected result** (one row per event, sample):
 
@@ -197,9 +197,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     **Expected:** `PutObject`, `GetObject`, and `DeleteObject` rows naming the object key — your state files at `env:/dev/lab1-app/terraform.tfstate` and `pipeline/staging/terraform.tfstate`, and the `.tflock` objects that appear and disappear around every apply.
 
-    The activity did not change between Task 1 and now, and neither did what was being recorded. Event history and this log group are two different stores: event history holds management events only and never held these calls, while the trail delivers data events here. Task 1 was looking somewhere they could not appear.
-
-    > **One thing genuinely is unrecoverable.** Data events from before the trail existed were never captured anywhere, so they cannot be recovered now. That is the same point Lab 1 made when it enabled S3 request metrics: you have to decide to collect before the activity happens.
+    The activity did not change between Task 1 and now, and neither did what was being recorded. Event history and this log group are two different stores: event history holds management events only and never held these calls, while the trail delivers data events here. Task 1 was looking somewhere they could not appear. Anything from before the trail existed was never captured at all.
 
 7. **Run a resource-scoped query**
 
@@ -245,7 +243,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | sort @timestamp desc
     | limit 50'
     ```
-    > **Saved queries are not private.** CloudWatch stores them per Region, not per user: anyone with CloudWatch Logs access in this Region sees every saved query in it. That is why the name starts with your student ID, and it is also what makes saved queries useful to a team rather than to one person.
+    > **Saved queries are not private.** CloudWatch stores them per Region, not per user, so everyone with access sees them all. Hence the student ID in the name.
 
     The console button and the CLI call create the same thing. What the CLI adds is repeatability: the command can live in a script, so a standard set of audit queries can be recreated in a new account without anyone clicking through a console.
 
@@ -280,7 +278,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Logs Insights |
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
 
-    > **About the S3 request widgets:** Lab 1 configures the backend with `use_lockfile = true` (Terraform 1.10+ S3 native locking), so a lock is an S3 object with a `.tflock` suffix rather than a DynamoDB item. Both widgets read S3 request metrics, which Lab 1 enabled with `aws_s3_bucket_metric.entire_bucket`. Lock and unlock requests are counted inside the bucket-wide `PutRequests` total, because request metrics filter on a key prefix and `.tflock` is a suffix. Appendix A covers what it would take to separate them.
+    > **About the S3 widgets.** Both read request metrics, which Lab 1 enabled with `aws_s3_bucket_metric`. Lock activity is counted inside the bucket-wide `PutRequests` total, because metrics filter on a key *prefix* and `.tflock` is a *suffix*. Appendix A covers the alternatives.
 11. **Configure Variables**
 
     ```bash
@@ -300,7 +298,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
 
     > **Don't edit `providers.tf`.** The backend block in that file is intentionally *partial* — it declares the `key`, `encrypt`, and `use_lockfile` settings but leaves `bucket` and `region` out, so they get supplied at `terraform init` time via `-backend-config` flags (Step 12). This matches the pattern Lab 3's `lab3/pipeline/providers.tf` uses and keeps the same file portable across students and regions.
 
-    > **Region handling in `dashboard.tf`:** every widget's `region` field, the Quick Links, and the `dashboard_url` output all read `var.region`, so the dashboard follows whatever you set in `terraform.tfvars` — no edits to `dashboard.tf` required. Just make sure `region` matches the region Lab 3 actually deployed to, or the widgets will render with "No data".
+    > **Region.** `dashboard.tf` reads `var.region`. If that does not match where Lab 3 ran, every widget is empty.
 
     > **State bucket region ≠ deploy region.** The S3 backend's `region` setting names the **bucket's** region, *not* the region where the resources are being deployed. They're independent. A team can keep state in `us-east-1` for audit and deploy resources to `us-west-2` — the backend `region` would still be `us-east-1` because that's where the bucket lives. In Step 12, pass the region your Lab 1 bucket was created in (run `aws s3api get-bucket-location --bucket <your-state-bucket-name>` if you're unsure — note that a `None`/`null` response means `us-east-1`, an AWS quirk).
 
