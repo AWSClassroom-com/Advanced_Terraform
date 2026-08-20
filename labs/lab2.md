@@ -602,7 +602,7 @@ Resource may already be in state from a previous attempt:
 
 ```bash
 terraform state list
-terraform state rm <resource_address>
+terraform state rm "<resource_address>"
 ```
 ### Plan shows changes after import
 
@@ -615,7 +615,7 @@ Compare carefully:
 
 ```bash
 terraform state show aws_vpc.custom-vpc
-aws ec2 describe-vpcs --vpc-ids <id>
+aws ec2 describe-vpcs --vpc-ids "<id>"
 ```
 Adjust either config or the actual resource until they agree, then re-plan.
 

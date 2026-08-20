@@ -59,7 +59,7 @@ Advanced_Terraform/
 ## Per-module setup
 
 ```bash
-cd lab<N>/<module>/
+cd "lab<N>/<module>/"
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your account, region, and any IDs the module needs
 
