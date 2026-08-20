@@ -82,7 +82,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     > **Where are the state file writes?** They are not here. Every `terraform apply` wrote `PutObject` to the state bucket, but object-level calls are **data events**, and event history records **management events** only. Searching `PutObject` returns nothing no matter how much Terraform activity you have. Capturing data events needs a trail with S3 data event logging switched on, which costs per event and is off by default. It is a common audit gap: the bucket's *configuration* changes are recorded, the *object* writes are not.
 
-    **Filter 2: By Pipeline Role** (this only works if Lab 3's pipeline has executed)
+    **Filter 2: By Pipeline Role**
     - Lookup attribute: **User name**
     - Value: `userXX-codebuild-terraform-role`
 
@@ -100,7 +100,14 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
 3. **Examine an Event**
 
-    Click any **PutParameter** event → **View event**.
+    The results carry two different identities in the **User name** column, because both the pipeline and your lab instance write SSM parameters:
+
+    | User name | Who that is |
+    |---|---|
+    | `AWSCodeBuild-<build id>` | Lab 3's pipeline |
+    | `i-<instance id>` | you, running the CLI on the lab EC2 instance |
+
+    Click an event whose **User name** starts with **`AWSCodeBuild-`**, then **View event**.
 
     **Key fields for auditors:**
 
@@ -112,15 +119,17 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     | `eventTime` | `2026-05-03T14:33:45Z` | Exact UTC timestamp |
 
     > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, not which service orchestrated it. Terraform running inside a CodeBuild container signs with the CodeBuild role but reports the container's private address, so you will see something like `10.0.94.209` rather than `codebuild.amazonaws.com`. Some AWS services do report their own hostname, which is why the field looks inconsistent across events. For telling pipeline activity from manual activity, `userIdentity.arn` and `userAgent` are the reliable fields.
-4. **Compare Pipeline vs. Console Activity**
+4. **Compare the same action run by hand**
 
-    Find two events of the same type (`PutParameter` is a good one) and compare:
+    Go back to the **PutParameter** results and open an event whose **User name** starts with **`i-`**. Same API call, same day, run from your lab instance instead of the pipeline. Select both events and choose **Compare event details** to see them side by side.
 
-    | Field | Pipeline activity | Console / CLI activity |
+    | Field | Pipeline (`AWSCodeBuild-…`) | By hand (`i-…`) |
     |-------|-------------------|------------------------|
-    | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP, or `console.amazonaws.com` for some console-routed calls |
-    | `userAgent` | Contains `Terraform/1.10.x` | Contains `aws-cli/<version>` or browser User-Agent strings via console |
-    | `userIdentity.arn` | Assumed-role of the CodeBuild role, `.../userXX-codebuild-terraform-role/AWSCodeBuild-<id>` | Assumed-role of the EC2 instance role, `.../Terraform-InstanceRole/i-<instance id>` |
+    | `userIdentity.arn` | `.../userXX-codebuild-terraform-role/AWSCodeBuild-<build id>` | `.../Terraform-InstanceRole/i-<instance id>` |
+    | `userAgent` | Contains `Terraform/1.15.x` | Contains `aws-cli/<version>` |
+    | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP |
+
+    > **Neither one is an IAM user.** Both are assumed roles: the pipeline runs as its CodeBuild role, and your CLI runs as the instance profile attached to the lab EC2 instance. The event tells you which **role** acted, not which **person**. Getting to the person is a second step, from the role plus the timestamp plus who had access to that instance.
 
     > **Auditor's question answered:** *"Were all production changes made through the pipeline?"*
     >
@@ -130,22 +139,42 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
 ## Task 2: CloudWatch Log Insights (5 min)
 
-CloudTrail Event history works for one-off investigations. **CloudWatch Logs Insights** runs SQL-like queries across thousands of events at once — but only if CloudTrail is configured to deliver to a log group.
+CloudTrail Event history works for one-off investigations, one attribute at a time. **Log Analytics** runs SQL-like queries across thousands of events at once, and reads data events too — but only against a log group a trail delivers to.
 
-5. **Navigate to Logs Insights**
+5. **Navigate to Log Analytics**
 
     1. Open **CloudWatch**.
-    2. Expand **Logs** → click **Logs Insights**.
+    2. Expand **Logs** in the left nav, then choose **Log Analytics**.
+
+    A welcome banner appears: *"Log Analytics combines Logs Insights, Live Tail, and Contributor Insights in a unified experience."* Click **OK**. This is the current home of the query editor that used to be called Logs Insights, and the query language is unchanged.
+
+    > **Opting out.** The banner also offers **Opt out (Logs Insights)**, which returns you to the previous editor. The steps below are written for Log Analytics.
 
 6. **Select the CloudTrail Log Group**
 
-    Pick the CloudTrail log group from the dropdown. Set the time range to **Last 12 hours**.
+    Set **Query by** to **Log group**. In the **Search log groups** box type `cloudtrail`, then **tick the checkbox** next to `/aws/cloudtrail/advanced-terraform`.
 
-    > **If the dropdown has no CloudTrail log group, that is the expected result here.** Logs Insights can only query a log group, and CloudTrail delivers to one only when a **trail** is configured to do so. The classroom account has no trail — event history is always on and free, but it is not a log group and Logs Insights cannot read it. Read through Steps 7-9 to see the queries, then move to Task 3. This is the gap Task 1's callout described: without a trail you get 90 days of management events you can filter one attribute at a time, and no way to query across them.
+    Watch line 1 of the editor as you do it. It must end up naming the log group:
+
+    ```
+    SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-1w END=0s |
+    ```
+    That `SOURCE` line is new. The old editor took the log group from a dropdown and kept it out of the query; Log Analytics puts it in the query itself, which is what lets one query span several log groups. Two things follow from that:
+
+    - **Leave line 1 alone.** Every query below replaces only the lines underneath it.
+    - Line 1 already ends in a pipe (`|`), so the first command after it does **not** start with one.
+
+    Set the time range to **12h**.
+
+    > **`Error: A log group, a data source, a facet, or a tag filter must be selected to run a query`** means line 1 reads `SOURCE START=-1w END=0s` with no `logGroups(...)` in it. Typing in the search box is not enough; you have to tick the log group so the editor writes it into `SOURCE`.
+
+    > **Where this log group came from.** Event history is always on, but it is not a log group and Logs Insights cannot read it. Delivering events to CloudWatch Logs requires a **trail**, which your instructor created once for the class. It captures S3 **data events** as well as management events, which is what makes the next step possible.
+
+    > **This log group is shared by the whole class.** An unfiltered query returns everyone's activity. Filtering on your own bucket name is what narrows it to you.
 
 7. **Run a Terraform Activity Query**
 
-    Paste this query and click **Run**:
+    Replace the lines below `SOURCE` with this, then click **Run** (or Ctrl+Enter):
 
     ```
     fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
@@ -165,7 +194,24 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
 
     The mix is what you want to see. Most rows should carry a `codebuild-terraform-role` ARN, meaning pipeline-driven. A row carrying `Terraform-InstanceRole` means someone ran Terraform by hand from the lab instance, which is the anomaly the audit story is built around.
 
-8. **Run a Resource-Scoped Query**
+8. **Find the state file writes event history could not show**
+
+    In Task 1, searching event history for `PutObject` returned nothing. Those calls are data events, and event history records management events only. The trail captures them, so they are queryable here:
+
+    ```
+    fields @timestamp, eventName, requestParameters.key, userIdentity.arn
+    | filter eventSource = "s3.amazonaws.com"
+    | filter requestParameters.bucketName = "userXX-terraform-state-SUFFIX"
+    | sort @timestamp desc
+    | limit 20
+    ```
+    Replace the bucket name with your own from Lab 1, keeping the `SOURCE` line above.
+
+    **Expected:** `PutObject`, `GetObject`, and `DeleteObject` rows naming the object key — your state files at `env:/dev/lab1-app/terraform.tfstate` and `pipeline/staging/terraform.tfstate`, and the `.tflock` objects that appear and disappear around every apply.
+
+    Nothing about the activity changed between Task 1 and now. The only difference is that something was recording it.
+
+9. **Run a Resource-Scoped Query**
 
     ```
     fields @timestamp, eventName, requestParameters.name
@@ -175,7 +221,7 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
     | sort @timestamp desc
     | limit 20
     ```
-    Replace `userXX` with your assigned student ID. This narrows to SSM parameter operations on resources whose name contains your ID.
+    Replace `userXX` with your assigned student ID, again keeping the `SOURCE` line. This narrows to SSM parameter operations on resources whose name contains your ID.
 
     **Expected result** (sample):
 
@@ -184,9 +230,9 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
     | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
     | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
 
-    Empty result is also valid — it just means no SSM parameter operations have happened for your student ID during the time window you selected. Expand the time range (top right of the Logs Insights console) to confirm.
+    Empty result is also valid — it just means no SSM parameter operations have happened for your student ID during the time window you selected. Widen the time range at the top right to confirm.
 
-9. **Save the Query**
+10. **Save the Query**
 
     1. Click **Save**.
     2. Name: `userXX-terraform-activity`.
@@ -200,13 +246,13 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
 
 Queries answer specific questions. Your ops team needs an always-on dashboard.
 
-10. **Navigate to the Dashboard Directory**
+11. **Navigate to the Dashboard Directory**
 
     ```bash
     cd ~/Advanced_Terraform/lab4/observability
     ls -la
     ```
-11. **Review the Configuration Files**
+12. **Review the Configuration Files**
 
     ```bash
     cat dashboard.tf | head -40
@@ -226,10 +272,10 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
 
     > **About the S3 request widgets:** Lab 1 configures the backend with `use_lockfile = true` (Terraform 1.10+ S3 native locking), so a lock is an S3 object with a `.tflock` suffix rather than a DynamoDB item. Both widgets read S3 request metrics, which Lab 1 enabled with `aws_s3_bucket_metric.entire_bucket`. Lock and unlock requests are counted inside the bucket-wide `PutRequests` total, because request metrics filter on a key prefix and `.tflock` is a suffix. Appendix A covers what it would take to separate them.
-12. **Configure Variables**
+13. **Configure Variables**
 
     ```bash
-    # You're in ~/Advanced_Terraform/lab4/observability/ from Step 10.
+    # You're in ~/Advanced_Terraform/lab4/observability/ from Step 11.
     cp terraform.tfvars.example terraform.tfvars
     ```
     Edit `terraform.tfvars` and set all three required variables:
@@ -243,13 +289,13 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
 
     > **Bucket name handling:** `dashboard.tf` uses `var.state_bucket_name` directly, so the S3 widgets read from whatever bucket name you paste — Lab 1's random-suffix bucket works as-is, no edits to the dashboard code required.
 
-    > **Don't edit `providers.tf`.** The backend block in that file is intentionally *partial* — it declares the `key`, `encrypt`, and `use_lockfile` settings but leaves `bucket` and `region` out, so they get supplied at `terraform init` time via `-backend-config` flags (Step 13). This matches the pattern Lab 3's `lab3/pipeline/providers.tf` uses and keeps the same file portable across students and regions.
+    > **Don't edit `providers.tf`.** The backend block in that file is intentionally *partial* — it declares the `key`, `encrypt`, and `use_lockfile` settings but leaves `bucket` and `region` out, so they get supplied at `terraform init` time via `-backend-config` flags (Step 14). This matches the pattern Lab 3's `lab3/pipeline/providers.tf` uses and keeps the same file portable across students and regions.
 
     > **Region handling in `dashboard.tf`:** every widget's `region` field, the Quick Links, and the `dashboard_url` output all read `var.region`, so the dashboard follows whatever you set in `terraform.tfvars` — no edits to `dashboard.tf` required. Just make sure `region` matches the region Lab 3 actually deployed to, or the widgets will render with "No data".
 
-    > **State bucket region ≠ deploy region.** The S3 backend's `region` setting names the **bucket's** region, *not* the region where the resources are being deployed. They're independent. A team can keep state in `us-east-1` for audit and deploy resources to `us-west-2` — the backend `region` would still be `us-east-1` because that's where the bucket lives. In Step 13, pass the region your Lab 1 bucket was created in (run `aws s3api get-bucket-location --bucket <your-state-bucket-name>` if you're unsure — note that a `None`/`null` response means `us-east-1`, an AWS quirk).
+    > **State bucket region ≠ deploy region.** The S3 backend's `region` setting names the **bucket's** region, *not* the region where the resources are being deployed. They're independent. A team can keep state in `us-east-1` for audit and deploy resources to `us-west-2` — the backend `region` would still be `us-east-1` because that's where the bucket lives. In Step 14, pass the region your Lab 1 bucket was created in (run `aws s3api get-bucket-location --bucket <your-state-bucket-name>` if you're unsure — note that a `None`/`null` response means `us-east-1`, an AWS quirk).
 
-13. **Deploy the Dashboard**
+14. **Deploy the Dashboard**
 
     Initialize with explicit backend bucket and region — `providers.tf` expects both at init time, not in the file:
 
@@ -270,12 +316,12 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
     Type `yes` when prompted. Expected: **1 resource added** (the CloudWatch dashboard).
 
-14. **View the Dashboard**
+15. **View the Dashboard**
 
     ```bash
     terraform output dashboard_url
     ```
-    Open the URL in your browser. You should see the widget rows described in Step 11.
+    Open the URL in your browser. You should see the widget rows described in Step 12.
 
     > **Note on data freshness:** CloudWatch metrics for new resources take **5-10 minutes** to populate. If a widget shows "No data" immediately after deploy, give it time and refresh. If it's still empty after 30 minutes, verify the bucket name in `terraform.tfvars` actually matches your Lab 1 `terraform output` value — the widgets are reading from whatever bucket you named.
 
@@ -323,9 +369,9 @@ In order of likelihood:
 4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "user07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
 5. **Wrong region** — `dashboard.tf` reads `var.region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
 
-### Logs Insights query returns nothing
+### Log Analytics query returns nothing
 
-The classroom account has no CloudTrail trail, so there is no log group to query and the dropdown is empty. Use Event history (Task 1) instead. The same audit story can be told from Event history alone; Logs Insights is what you would reach for once a trail exists.
+Check the `SOURCE` line still names `/aws/cloudtrail/advanced-terraform` — replacing the whole editor contents removes it. Then widen the time range, and confirm your filter values match exactly (bucket names and student IDs are case-sensitive).
 
 ---
 
@@ -348,8 +394,8 @@ The classroom account has no CloudTrail trail, so there is no log group to query
 - [ ] Ran the three lookup filters (Event name `CreateBucket`, User name `userXX-codebuild-terraform-role`, Event name `PutParameter`)
 - [ ] Examined a CloudTrail event JSON and identified `userIdentity.arn`, `userAgent`, `sourceIPAddress`, `eventTime`
 - [ ] Compared a pipeline event vs. a console/CLI event side by side
-- [ ] Ran the two Logs Insights queries (or skipped Task 2 with the documented reason)
-- [ ] Saved a reusable Logs Insights query
+- [ ] Ran the Log Analytics queries, including the one that finds the state file writes
+- [ ] Saved a reusable Log Analytics query
 - [ ] Deployed the CloudWatch dashboard via `terraform apply`
 - [ ] Opened the dashboard URL and identified each widget row
 - [ ] Acknowledged which widgets stay empty until Lab 3's pipeline runs (CodeBuild / Pipeline widgets)
