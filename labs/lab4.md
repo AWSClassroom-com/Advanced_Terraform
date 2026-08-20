@@ -68,6 +68,8 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     2. Search for **CloudTrail**.
     3. Click **Event history** in the left sidebar.
 
+    > **Expect an AccessDenied banner on the way in.** CloudTrail opens on its **Dashboard** page, which queries CloudTrail Lake and Insights. Your classroom account grants `cloudtrail:LookupEvents` but not those, so the Dashboard shows `AccessDeniedException: You don't have permissions to access this resource`. Nothing is wrong with your account. Click **Event history** and it works normally. Everything in this lab uses Event history.
+
 2. **Filter for Terraform Activity**
 
     Try these filters one at a time. Each filter uses CloudTrail Event history's **Lookup attributes**:
@@ -94,7 +96,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
 
     These come from Lab 1's locking demo and, if you completed Task 5, from the pipeline as well. Keep this result on screen for the next step.
 
-    > **If you see no events:** CloudTrail Event history retains the most recent 90 days of management events for free, but events take **up to 15 minutes** to appear after the underlying API call. If Labs 1-3 finished within the last 15 minutes, wait and refresh.
+    > **If you see no events:** check the time range selector first, which defaults to a narrow window. Event history keeps 90 days of management events, so everything from Labs 1-3 is still there. Widen the range and search again. Newly created events also take up to 15 minutes to appear, which only matters if you re-run something during this lab.
 
 3. **Examine an Event**
 
@@ -139,7 +141,7 @@ CloudTrail Event history works for one-off investigations. **CloudWatch Logs Ins
 
     Pick the CloudTrail log group from the dropdown. Set the time range to **Last 12 hours**.
 
-    > **If no CloudTrail log group exists:** the org's CloudTrail trail isn't sending events to CloudWatch Logs (only to S3 / Event history). Skip to Task 3 — the dashboard still works without Logs Insights, and Event history covers the same 90 days.
+    > **If the dropdown has no CloudTrail log group, that is the expected result here.** Logs Insights can only query a log group, and CloudTrail delivers to one only when a **trail** is configured to do so. The classroom account has no trail — event history is always on and free, but it is not a log group and Logs Insights cannot read it. Read through Steps 7-9 to see the queries, then move to Task 3. This is the gap Task 1's callout described: without a trail you get 90 days of management events you can filter one attribute at a time, and no way to query across them.
 
 7. **Run a Terraform Activity Query**
 
@@ -306,7 +308,7 @@ When the auditor arrives, you can demonstrate:
 
 ### CloudTrail events not showing
 
-Events take **up to 15 minutes** to appear in Event history. Verify:
+Widen the time range selector first — it defaults to a narrow window, and Labs 1-3 ran earlier in the day. Events created in the last 15 minutes may not have arrived yet. Verify:
 - You're in `us-east-2` (or whichever region your pipeline runs in).
 - The time range filter includes when the activity occurred.
 - The filter values exactly match (e.g., `userXX-codebuild-terraform-role` not `userXX-codebuild`).
