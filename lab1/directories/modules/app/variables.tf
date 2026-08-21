@@ -4,14 +4,20 @@
 # Note: environment is EXPLICIT (passed by the caller), not from terraform.workspace.
 # That's the whole point of the directory pattern — no implicit workspace lookup.
 
-variable "account" {
-  description = "Your assigned IAM username (e.g., user01)."
+variable "user_id" {
+  description = "Your assigned AWS login ID (for example user07)."
   type        = string
 
   validation {
-    condition     = can(regex("^user[0-9]{2}$", var.account))
-    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+    condition     = can(regex("^user[0-9]{2}$", var.user_id))
+    error_message = "user_id must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned AWS login ID."
   }
+}
+
+variable "bucket_region" {
+  description = "Region the state bucket lives in. Read by the terraform_remote_state config below - a data source CAN take a variable, unlike a backend block."
+  type        = string
+  default     = "us-east-2"
 }
 
 variable "environment" {

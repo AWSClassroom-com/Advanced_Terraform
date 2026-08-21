@@ -26,7 +26,7 @@ resource "aws_vpc" "custom-vpc" {
   enable_dns_support   = true
 
   tags = {
-    Name = "${var.account}-vpc"
+    Name = "${var.user_id}-vpc"
   }
 
   lifecycle {
@@ -43,7 +43,7 @@ resource "aws_subnet" "subnet-a" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.account}-public-subnet-a"
+    Name = "${var.user_id}-public-subnet-a"
   }
 }
 
@@ -51,7 +51,7 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.custom-vpc.id
 
   tags = {
-    Name = "${var.account}-igw"
+    Name = "${var.user_id}-igw"
   }
 }
 
@@ -64,7 +64,7 @@ resource "aws_route_table" "public_rt" {
   }
 
   tags = {
-    Name = "${var.account}-public-route-table"
+    Name = "${var.user_id}-public-route-table"
   }
 }
 

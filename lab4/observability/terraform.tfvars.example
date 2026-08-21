@@ -3,12 +3,10 @@
 # Copy to terraform.tfvars and fill in. All three variables are required —
 # variables.tf declares them with no defaults.
 #
-# IMPORTANT: `account` here should be the SAME value you used as
-# `student_id` in Labs 1 and 3 (e.g. user07). Lab 4's dashboard widgets
-# reference Lab 3 resources by `${var.account}-terraform-validate` etc. —
-# if account here doesn't match Lab 3's student_id, every widget shows
-# "No data".
+# Use the SAME user_id you used in Labs 1 and 3. The dashboard widgets look up
+# Lab 3 resources by name (${var.user_id}-terraform-validate and friends), so a
+# different value here points every widget at something that does not exist.
 
-region            = ""                                 # Your assigned region (e.g. us-east-2)
-account           = "userXX"                           # SAME as student_id in Labs 1 + 3 (e.g. user07)
+primary_region    = ""                                 # The region you work in (e.g. us-east-2)
+user_id           = "userXX"                           # Same value as Labs 1 and 3 (e.g. user07)
 state_bucket_name = "userXX-terraform-state-SUFFIX"    # Exact bucket name from Lab 1 `terraform output`

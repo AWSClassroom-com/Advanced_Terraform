@@ -3,12 +3,12 @@
 terraform {
   required_version = ">= 1.5.0"
 
-  # IMPORTANT: Replace the bucket value below with your actual value from Lab 1.
-  # Run `terraform output` in lab1-state-infra/ to get your state_bucket_name.
+  # Bucket and region are supplied at init time - a backend block cannot read
+  # variables:
+  #   terraform init -backend-config="bucket=<your state bucket from Lab 1>" \
+  #                  -backend-config="region=<your bucket_region>"
   backend "s3" {
-    bucket       = "userXX-terraform-state-SUFFIX" # <- Replace with your state_bucket_name from Lab 1
     key          = "pipeline/terraform.tfstate"
-    region       = "us-east-2"
     encrypt      = true
     use_lockfile = true # Uses S3 native locking instead of DynamoDB
   }
@@ -26,11 +26,11 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2"
+  region = var.primary_region
 
   default_tags {
     tags = {
-      Student   = "userXX" # <- Replace with your student_id
+      Student   = var.user_id
       Purpose   = "Terraform Pipeline"
       ManagedBy = "Terraform"
     }

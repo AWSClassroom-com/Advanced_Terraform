@@ -6,10 +6,12 @@
 terraform {
   required_version = ">= 1.10.0"
 
+  # Bucket and region are supplied at init time - a backend block cannot read
+  # variables:
+  #   terraform init -backend-config="bucket=<your state bucket>" \
+  #                  -backend-config="region=<your bucket_region>"
   backend "s3" {
-    bucket       = "userXX-terraform-state-SUFFIX"         # REPLACE: state_bucket_name output from lab1/state-infra
     key          = "directories/staging/terraform.tfstate" # Path includes env name
-    region       = "us-east-2"                             # change to your assigned region if not us-east-2
     encrypt      = true
     use_lockfile = true
   }
@@ -23,5 +25,12 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2" # change to your assigned region if not us-east-2
+  region = var.primary_region
+
+  default_tags {
+    tags = {
+      Student = var.user_id
+      Lab     = "Lab 1 - directories"
+    }
+  }
 }

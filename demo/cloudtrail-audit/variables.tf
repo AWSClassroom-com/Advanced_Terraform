@@ -6,7 +6,7 @@ variable "class_prefix" {
   default     = "advanced-terraform"
 }
 
-variable "region" {
+variable "primary_region" {
   description = "Region the trail runs in. Use the region the class deploys to, so S3 data events are recorded locally."
   type        = string
   default     = "us-east-2"

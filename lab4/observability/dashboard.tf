@@ -7,11 +7,11 @@
 # Widgets are laid out on a 24-column grid: x and y are grid positions,
 # width and height are grid units. Rows are grouped by comment below.
 #
-# Every region reference reads var.region, so the dashboard follows
+# Every region reference reads var.primary_region, so the dashboard follows
 # wherever the class deploys.
 
 resource "aws_cloudwatch_dashboard" "terraform_ops" {
-  dashboard_name = "${var.account}-terraform-operations"
+  dashboard_name = "${var.user_id}-terraform-operations"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -25,7 +25,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         width  = 24
         height = 2
         properties = {
-          markdown = "# Terraform Operations Dashboard — ${var.account}\n**Account:** ${var.account} | **Region:** ${var.region} | **State bucket:** `${var.state_bucket_name}`\n\nMonitors CI/CD pipeline health, state operations, and provides audit query references."
+          markdown = "# Terraform Operations Dashboard — ${var.user_id}\n**User:** ${var.user_id} | **Region:** ${var.primary_region} | **State bucket:** `${var.state_bucket_name}`\n\nMonitors CI/CD pipeline health, state operations, and provides audit query references."
         }
       },
 
@@ -40,15 +40,15 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/CodeBuild", "Duration", "ProjectName", "${var.account}-terraform-validate"],
-            ["...", "${var.account}-terraform-plan-staging"],
-            ["...", "${var.account}-terraform-apply-staging"],
-            ["...", "${var.account}-terraform-plan-prod"],
-            ["...", "${var.account}-terraform-apply-prod"]
+            ["AWS/CodeBuild", "Duration", "ProjectName", "${var.user_id}-terraform-validate"],
+            ["...", "${var.user_id}-terraform-plan-staging"],
+            ["...", "${var.user_id}-terraform-apply-staging"],
+            ["...", "${var.user_id}-terraform-plan-prod"],
+            ["...", "${var.user_id}-terraform-apply-prod"]
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.region
+          region  = var.primary_region
           title   = "CodeBuild Duration (seconds)"
           period  = 300
           stat    = "Average"
@@ -63,14 +63,14 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/CodeBuild", "SucceededBuilds", "ProjectName", "${var.account}-terraform-apply-staging"],
+            ["AWS/CodeBuild", "SucceededBuilds", "ProjectName", "${var.user_id}-terraform-apply-staging"],
             [".", "FailedBuilds", ".", "."],
-            [".", "SucceededBuilds", ".", "${var.account}-terraform-apply-prod"],
+            [".", "SucceededBuilds", ".", "${var.user_id}-terraform-apply-prod"],
             [".", "FailedBuilds", ".", "."]
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.region
+          region  = var.primary_region
           title   = "Build Success vs. Failure (Apply stages)"
           period  = 3600
           stat    = "Sum"
@@ -85,10 +85,10 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.account}-terraform-pipeline"]
+            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.user_id}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = var.region
+          region = var.primary_region
           title  = "Pipeline Successes"
           period = 86400
           stat   = "Sum"
@@ -103,10 +103,10 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionFailed", "PipelineName", "${var.account}-terraform-pipeline"]
+            ["AWS/CodePipeline", "PipelineExecutionFailed", "PipelineName", "${var.user_id}-terraform-pipeline"]
           ]
           view   = "singleValue"
-          region = var.region
+          region = var.primary_region
           title  = "Pipeline Failures"
           period = 86400
           stat   = "Sum"
@@ -121,12 +121,12 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.account}-terraform-pipeline", { stat = "Sum" }],
+            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.user_id}-terraform-pipeline", { stat = "Sum" }],
             [".", "PipelineExecutionFailed", ".", ".", { stat = "Sum" }]
           ]
           view    = "timeSeries"
           stacked = true
-          region  = var.region
+          region  = var.primary_region
           title   = "Pipeline Executions Over Time"
           period  = 3600
         }
@@ -151,7 +151,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.region
+          region  = var.primary_region
           title   = "State Bucket Operations (Get = plan, Put = apply)"
           period  = 300
           stat    = "Sum"
@@ -172,7 +172,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           ]
           view    = "timeSeries"
           stacked = false
-          region  = var.region
+          region  = var.primary_region
           title   = "State Bucket PutRequests (state writes + .tflock lock/unlock)"
           period  = 300
           stat    = "Sum"
@@ -192,11 +192,11 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           markdown = <<-EOT
             ## Quick Links
 
-            - [CodePipeline → ${var.account}-terraform-pipeline](https://${var.region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${var.account}-terraform-pipeline/view)
-            - [CodeBuild Projects](https://${var.region}.console.aws.amazon.com/codesuite/codebuild/projects)
-            - [CloudTrail Event History](https://${var.region}.console.aws.amazon.com/cloudtrail/home#/events)
-            - [State Bucket](https://${var.region}.console.aws.amazon.com/s3/buckets/${var.state_bucket_name})
-            - [Logs Insights](https://${var.region}.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
+            - [CodePipeline → ${var.user_id}-terraform-pipeline](https://${var.primary_region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${var.user_id}-terraform-pipeline/view)
+            - [CodeBuild Projects](https://${var.primary_region}.console.aws.amazon.com/codesuite/codebuild/projects)
+            - [CloudTrail Event History](https://${var.primary_region}.console.aws.amazon.com/cloudtrail/home#/events)
+            - [State Bucket](https://${var.primary_region}.console.aws.amazon.com/s3/buckets/${var.state_bucket_name})
+            - [Logs Insights](https://${var.primary_region}.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
           EOT
         }
       },
@@ -220,19 +220,19 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             | sort @timestamp desc | limit 50
             ```
 
-            **SSM parameter changes for ${var.account}**
+            **SSM parameter changes for ${var.user_id}**
             ```
             fields @timestamp, eventName, requestParameters.name
             | filter eventSource = "ssm.amazonaws.com"
             | filter eventName in ["PutParameter","DeleteParameter"]
-            | filter requestParameters.name like /${var.account}/
+            | filter requestParameters.name like /${var.user_id}/
             | sort @timestamp desc | limit 20
             ```
 
             **Pipeline vs. manual changes**
             ```
             fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
-            | filter userIdentity.arn like /${var.account}-codebuild-terraform-role/
+            | filter userIdentity.arn like /${var.user_id}-codebuild-terraform-role/
             | sort @timestamp desc | limit 50
             ```
           EOT
@@ -244,7 +244,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
 
 output "dashboard_url" {
   description = "Direct URL to view this dashboard in the CloudWatch console."
-  value       = "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards:name=${aws_cloudwatch_dashboard.terraform_ops.dashboard_name}"
+  value       = "https://${var.primary_region}.console.aws.amazon.com/cloudwatch/home?region=${var.primary_region}#dashboards:name=${aws_cloudwatch_dashboard.terraform_ops.dashboard_name}"
 }
 
 output "dashboard_name" {

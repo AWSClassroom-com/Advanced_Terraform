@@ -1,15 +1,16 @@
 # environments/staging/main.tf — Staging environment
-# Deployed automatically by Lab 3's CodePipeline. Region is pinned to
-# the staging region; backend bucket name is patched by the student
-# before the first commit.
+# Deployed automatically by Lab 3's CodePipeline. Every environment-specific
+# value — the state bucket, its region, and your user_id — is injected by the
+# pipeline at build time, so there is nothing to hand-edit in this file.
+# Staging deploys to var.staging_region, a different region from prod.
 
 terraform {
   required_version = ">= 1.10.0"
 
+  # The pipeline supplies bucket and region at init time via
+  # -backend-config; a backend block cannot read variables.
   backend "s3" {
-    bucket       = "userXX-terraform-state-SUFFIX" # replace before first commit
     key          = "pipeline/staging/terraform.tfstate"
-    region       = "us-east-2" # staging region — adjust if your bucket lives elsewhere
     encrypt      = true
     use_lockfile = true # Terraform 1.10+ S3 native locking
   }
@@ -23,15 +24,27 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2" # staging deploy region
+  region = var.staging_region
 
   default_tags {
     tags = {
-      Student     = "userXX" # replace before first commit
+      Student     = var.user_id
       Environment = "staging"
       ManagedBy   = "Terraform-Pipeline"
     }
   }
+}
+
+variable "user_id" {
+  description = "Your assigned AWS login ID. The pipeline injects this as TF_VAR_user_id, so there is nothing to edit here."
+  type        = string
+  default     = "userXX"
+}
+
+variable "staging_region" {
+  description = "Where the staging environment deploys. Different from the primary region on purpose - promotion crosses regions."
+  type        = string
+  default     = "us-east-1"
 }
 
 # Main path: EC2 + Apache (matches Day 1-2 pattern).
@@ -40,7 +53,7 @@ provider "aws" {
 # so no other changes are required here.
 module "app" {
   source      = "../../modules/app"
-  student_id  = "userXX" # replace before first commit
+  user_id     = var.user_id
   environment = "staging"
 }
 

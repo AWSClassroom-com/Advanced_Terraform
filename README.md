@@ -46,15 +46,15 @@ Advanced_Terraform/
 
 - **AWS provider:** `~> 6.0`
 - **Terraform:** `>= 1.10.0` (S3 native locking via `use_lockfile = true`)
-- **`var.account`:** student's IAM username (e.g. `user01`). No format validation.
-- **`var.region`:** no default — passed in via `terraform.tfvars`.
+- **`var.user_id`:** the student's AWS login ID (e.g. `user07`), validated against `^user[0-9]{2}$`.
+- **Regions:** `var.primary_region` (where the student works, default `us-east-2`), `var.staging_region` (Lab 3 staging, `us-east-1`), `var.prod_region` (Lab 3 prod, `us-west-2`), `var.bucket_region` (where the state bucket lives). All set in `terraform.tfvars`; nothing hardcodes a region.
 - **State backend:** `providers.tf` keeps `bucket` and `region` out of the file; passed at init time:
   ```bash
   terraform init \
       -backend-config="bucket=tf-state-userxx-XXXXXXXX" \
       -backend-config="region=us-east-2"
   ```
-- **Tags:** every resource gets a `Name` tag prefixed with `${var.account}-`.
+- **Tags:** every resource gets a `Name` tag prefixed with `${var.user_id}-`.
 
 ## Per-module setup
 

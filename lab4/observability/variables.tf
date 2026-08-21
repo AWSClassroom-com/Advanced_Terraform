@@ -1,17 +1,17 @@
 # lab4-observability/variables.tf
 
-variable "region" {
+variable "primary_region" {
   description = "AWS region. NO default — set in terraform.tfvars to whatever your instructor assigned."
   type        = string
 }
 
-variable "account" {
-  description = "Your IAM user account name (e.g. user01). Used to namespace the dashboard and resources. Same value as Day 1-2 var.account."
+variable "user_id" {
+  description = "Your IAM user account name (e.g. user01). Used to namespace the dashboard and resources. Same value as Day 1-2 var.user_id."
   type        = string
 
   validation {
-    condition     = can(regex("^user[0-9]{2}$", var.account))
-    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+    condition     = can(regex("^user[0-9]{2}$", var.user_id))
+    error_message = "user_id must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned AWS login ID."
   }
 }
 

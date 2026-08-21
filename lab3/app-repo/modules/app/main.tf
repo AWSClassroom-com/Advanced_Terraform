@@ -44,9 +44,9 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name        = "${var.student_id}-${var.environment}-vpc"
+    Name        = "${var.user_id}-${var.environment}-vpc"
     Environment = var.environment
-    Student     = var.student_id
+    Student     = var.user_id
     ManagedBy   = "terraform-pipeline"
   }
 }
@@ -58,8 +58,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name    = "${var.student_id}-${var.environment}-public-subnet"
-    Student = var.student_id
+    Name    = "${var.user_id}-${var.environment}-public-subnet"
+    Student = var.user_id
   }
 }
 
@@ -67,8 +67,8 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name    = "${var.student_id}-${var.environment}-igw"
-    Student = var.student_id
+    Name    = "${var.user_id}-${var.environment}-igw"
+    Student = var.user_id
   }
 }
 
@@ -81,8 +81,8 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name    = "${var.student_id}-${var.environment}-public-rt"
-    Student = var.student_id
+    Name    = "${var.user_id}-${var.environment}-public-rt"
+    Student = var.user_id
   }
 }
 
@@ -92,7 +92,7 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_security_group" "web" {
-  name        = "${var.student_id}-${var.environment}-web-sg"
+  name        = "${var.user_id}-${var.environment}-web-sg"
   description = "Allow HTTP inbound; all outbound. Created by Lab 3 pipeline."
   vpc_id      = aws_vpc.main.id
 
@@ -113,8 +113,8 @@ resource "aws_security_group" "web" {
   }
 
   tags = {
-    Name    = "${var.student_id}-${var.environment}-web-sg"
-    Student = var.student_id
+    Name    = "${var.user_id}-${var.environment}-web-sg"
+    Student = var.user_id
   }
 }
 
@@ -133,15 +133,15 @@ resource "aws_instance" "web" {
     cat > /var/www/html/index.html <<HTML
     <h1>Sample Web App</h1>
     <p>Environment: ${var.environment}</p>
-    <p>Student: ${var.student_id}</p>
+    <p>Student: ${var.user_id}</p>
     <p>Deployed via CI/CD Pipeline</p>
     HTML
   EOF
 
   tags = {
-    Name        = "${var.student_id}-${var.environment}-web"
+    Name        = "${var.user_id}-${var.environment}-web"
     Environment = var.environment
-    Student     = var.student_id
+    Student     = var.user_id
     ManagedBy   = "terraform-pipeline"
   }
 }

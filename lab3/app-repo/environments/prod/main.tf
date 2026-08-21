@@ -2,17 +2,18 @@
 # Deployed automatically by Lab 3's CodePipeline AFTER the staging stage
 # has applied AND the human approver has clicked through the gate.
 # Production deploys to a DIFFERENT region from staging — this is the
-# whole point of the multi-region story in Module 3.
+# whole point of the multi-region story in Chapter 3. The state bucket, its
+# region, and your user_id are injected by the pipeline at build time.
 
 terraform {
   required_version = ">= 1.10.0"
 
+  # The pipeline supplies bucket and region at init time via
+  # -backend-config; a backend block cannot read variables.
   backend "s3" {
-    bucket       = "userXX-terraform-state-SUFFIX" # replace before first commit
     key          = "pipeline/prod/terraform.tfstate"
-    region       = "us-east-2" # bucket region — bucket itself lives in staging region
     encrypt      = true
-    use_lockfile = true
+    use_lockfile = true # Terraform 1.10+ S3 native locking
   }
 
   required_providers {
@@ -24,20 +25,32 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2" # prod deploy region — different from staging
+  region = var.prod_region
 
   default_tags {
     tags = {
-      Student     = "userXX" # replace before first commit
+      Student     = var.user_id
       Environment = "prod"
       ManagedBy   = "Terraform-Pipeline"
     }
   }
 }
 
+variable "user_id" {
+  description = "Your assigned AWS login ID. The pipeline injects this as TF_VAR_user_id, so there is nothing to edit here."
+  type        = string
+  default     = "userXX"
+}
+
+variable "prod_region" {
+  description = "Where production deploys. A different region again, so a regional failure cannot take both environments out."
+  type        = string
+  default     = "us-west-2"
+}
+
 module "app" {
   source      = "../../modules/app"
-  student_id  = "userXX" # replace before first commit
+  user_id     = var.user_id
   environment = "prod"
 }
 

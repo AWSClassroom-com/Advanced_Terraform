@@ -2,7 +2,7 @@
 # Orchestrates the full Terraform deployment workflow across environments
 
 resource "aws_codepipeline" "terraform" {
-  name     = "${var.student_id}-terraform-pipeline"
+  name     = "${var.user_id}-terraform-pipeline"
   role_arn = aws_iam_role.codepipeline.arn
 
   artifact_store {
@@ -195,6 +195,6 @@ resource "aws_codepipeline" "terraform" {
   }
 
   tags = {
-    Name = "${var.student_id}-terraform-pipeline"
+    Name = "${var.user_id}-terraform-pipeline"
   }
 }

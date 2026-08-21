@@ -9,7 +9,7 @@
 # - Manage the AWS resources that Terraform will create (EC2, ELB, ASG, SSM)
 
 resource "aws_iam_role" "codebuild" {
-  name = "${var.student_id}-codebuild-terraform-role"
+  name = "${var.user_id}-codebuild-terraform-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -25,12 +25,12 @@ resource "aws_iam_role" "codebuild" {
   })
 
   tags = {
-    Name = "${var.student_id}-codebuild-terraform-role"
+    Name = "${var.user_id}-codebuild-terraform-role"
   }
 }
 
 resource "aws_iam_role_policy" "codebuild" {
-  name = "${var.student_id}-codebuild-terraform-policy"
+  name = "${var.user_id}-codebuild-terraform-policy"
   role = aws_iam_role.codebuild.id
 
   policy = jsonencode({
@@ -101,7 +101,7 @@ resource "aws_iam_role_policy" "codebuild" {
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy"
         ]
-        Resource = "arn:aws:iam::*:role/${var.student_id}-*"
+        Resource = "arn:aws:iam::*:role/${var.user_id}-*"
       },
       {
         # Task 5 adds an `env: secrets-manager:` block to the apply buildspec.
@@ -130,7 +130,7 @@ resource "aws_iam_role_policy" "codebuild" {
 # - Read/write pipeline artifacts in S3
 
 resource "aws_iam_role" "codepipeline" {
-  name = "${var.student_id}-codepipeline-role"
+  name = "${var.user_id}-codepipeline-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -146,12 +146,12 @@ resource "aws_iam_role" "codepipeline" {
   })
 
   tags = {
-    Name = "${var.student_id}-codepipeline-role"
+    Name = "${var.user_id}-codepipeline-role"
   }
 }
 
 resource "aws_iam_role_policy" "codepipeline" {
-  name = "${var.student_id}-codepipeline-policy"
+  name = "${var.user_id}-codepipeline-policy"
   role = aws_iam_role.codepipeline.id
 
   policy = jsonencode({

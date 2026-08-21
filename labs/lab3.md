@@ -129,7 +129,7 @@ By the end of this lab, you will:
 
 ## Task 2: Deploy Pipeline Infrastructure (10 min)
 
-> **Naming convention reminder.** Lab 3's pipeline stack uses **`student_id`** as its input variable (not `account` like Lab 2's lean VPC). It accepts `^user[0-9]{2}$` only, matching Lab 1 — use the **same value you set in Lab 1** so the bucket name, CodeCommit repo, CodePipeline, and CodeBuild projects all share a consistent prefix (e.g., if Lab 1 used `user07`, use `user07` here too — every resource gets prefixed `user07-terraform-repo`, `user07-terraform-pipeline`, etc.).
+> **Use the same `user_id` you set in Lab 1.** It is validated against `^user[0-9]{2}$`, and every resource here is prefixed with it — `user07-terraform-repo`, `user07-terraform-pipeline`, and so on. Lab 4's dashboard looks those names up, so a different value breaks it.
 
 5. **Configure Variables**
 
@@ -140,7 +140,7 @@ By the end of this lab, you will:
     Edit `terraform.tfvars`. Use the **same concrete ID you used in Lab 1**. The validator accepts `userNN` only, so `userXX` is rejected and `user07` is the shape it wants. Using a different ID than Lab 1 breaks the shared naming Lab 4's dashboard depends on:
 
     ```hcl
-    student_id        = "user07"                         # ← REPLACE 07 with YOUR assigned student number (same value you used in Lab 1)
+    user_id        = "user07"                         # ← REPLACE 07 with YOUR assigned student number (same value you used in Lab 1)
     state_bucket_name = "user07-terraform-state-ab12cd"  # ← REPLACE with YOUR actual bucket name from Lab 1 `terraform output state_bucket_name`
     ```
 
@@ -161,7 +161,9 @@ By the end of this lab, you will:
 7. **Deploy Pipeline**
 
     ```bash
-    terraform init
+    terraform init \
+        -backend-config="bucket=<your Lab 1 state bucket>" \
+        -backend-config="region=<your bucket region>"
     terraform plan
     terraform apply
     ```
@@ -237,11 +239,11 @@ By the end of this lab, you will:
     | `environments/staging/main.tf` | Staging wrapper — `backend "s3"` block + AWS provider (us-east-2) + `module "app"` call with `environment = "staging"`. Exposes `public_ip`, `instance_id`, `vpc_id` outputs. |
     | `environments/prod/main.tf` | Prod wrapper — same shape, different region (us-west-2), different state key. Same outputs. |
     | `modules/app/main.tf` | Shared application module — VPC, public subnet, IGW, route table, route table association, security group, and EC2 instance running Apache. Mirrors the Day 1-2 pattern so the skills carry over directly. |
-    | `modules/app/variables.tf` | Module inputs: `student_id`, `environment`, `instance_count` |
+    | `modules/app/variables.tf` | Module inputs: `user_id`, `environment`, `instance_count` |
     | `modules/app/outputs.tf` | Module outputs: `public_ip`, `instance_id`, `vpc_id`, `api_url` (null for this module — populated by the bonus serverless module instead). |
     | `modules/app-serverless/` | **Bonus** — Lambda + API Gateway HTTP API. Drop-in replacement for `modules/app/` with the same interface. Used only if you do Task 8. |
 
-    > **Why VPC + EC2 (and not just SSM parameters)?** A pipeline lab is most convincing when students can see real infrastructure come up. The deployed stack mirrors what Days 1-2 built — same `aws_vpc` / `aws_subnet` / `aws_security_group` / `aws_instance` shape — so the skills carry over directly. Apache writes a tiny `index.html` tagged with the environment and student ID, and the verification step is a `curl` against the public IP. ~$0.01/hr per instance — trivial for a 4-hour class.
+    > **Why VPC + EC2 (and not just SSM parameters)?** A pipeline lab is most convincing when students can see real infrastructure come up. The deployed stack mirrors what Days 1-2 built — same `aws_vpc` / `aws_subnet` / `aws_security_group` / `aws_instance` shape — so the skills carry over directly. Apache writes a tiny `index.html` tagged with the environment and user ID, and the verification step is a `curl` against the public IP. ~$0.01/hr per instance — trivial for a 4-hour class.
 
 12. **Review the directory layout you just copied in**
 
@@ -259,7 +261,7 @@ By the end of this lab, you will:
       prod/main.tf                 # prod wrapper — same shape, different region/keys
     modules/
       app/main.tf                  # shared module — VPC + subnet + IGW + RT + RTA + SG + EC2 (httpd)
-      app/variables.tf             # module inputs: student_id, environment, instance_count
+      app/variables.tf             # module inputs: user_id, environment, instance_count
       app/outputs.tf               # public_ip, instance_id, vpc_id, api_url (null for EC2 module)
       app-serverless/main.tf       # BONUS: Lambda + API Gateway alternative
       app-serverless/variables.tf  # same interface as modules/app
@@ -284,48 +286,24 @@ By the end of this lab, you will:
     - **`environments/prod/main.tf`** is the same shape — different state key (`pipeline/prod/terraform.tfstate`), different provider region (**us-west-2**), `environment = "prod"`.
     - **`modules/app/main.tf`** deploys 7 resources per environment: `aws_vpc` (10.10.0.0/16 for staging, 10.20.0.0/16 for prod — avoids Day 1-2's 192.168.0.0/20), `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association`, `aws_security_group` (HTTP-only), and `aws_instance` (t3.micro running Apache). The `user_data` writes a tiny env-tagged `index.html` so `curl http://<public_ip>` returns proof the right environment deployed.
 
-14. **Customize the staging and prod wrappers for your student ID + bucket**
+14. **Check the wrappers — there is nothing to edit**
 
-    Both wrappers ship with placeholder strings (`userXX`, `SUFFIX`) that you must replace with your actual values **before** committing. The bucket name comes from your Lab 1 `terraform output state_bucket_name`.
-
-    **a. Edit the staging wrapper:**
+    Open `environments/staging/main.tf` and read the top of the file:
 
     ```bash
     # Still in ~/Advanced_Terraform/lab3/webapp-repo/
-    cd environments/staging
-    pwd     # should print: <...>/lab3/webapp-repo/environments/staging
+    sed -n '1,50p' environments/staging/main.tf
     ```
 
-    Open `main.tf` in your editor. Replace **every occurrence** of:
+    Notice what is **not** there. No bucket name, no region literal, no user ID:
 
-    | Placeholder | Replace with |
-    |---|---|
-    | `userXX` | your assigned IAM username (e.g., `user07`) |
-    | `userXX-terraform-state-SUFFIX` | your actual Lab 1 bucket name (e.g., `user07-terraform-state-ab12cd`) |
+    - The `backend "s3"` block declares only `key`, `encrypt`, and `use_lockfile`. The bucket and its region arrive at `terraform init` time, injected by the pipeline.
+    - `provider "aws"` reads `var.staging_region`, which defaults to `us-east-1`.
+    - `module "app"` and the `Student` tag both read `var.user_id`, which the pipeline supplies as `TF_VAR_user_id` from the `user_id` you set in Step 5.
 
-    > **What if you miss one?** `modules/app/variables.tf` validates `student_id` against `^user[0-9]{2}$`, so an unreplaced `userXX` fails the pipeline's **Validate** stage with an error naming the file and line. It won't silently deploy resources named `userXX-staging-vpc`.
+    > **Why this matters.** A value that has to be pasted into several files is a value that gets pasted wrong in one of them. The pipeline already knows your ID, your bucket, and its region — so it passes them in, and these files stay identical for every student in the room.
 
-    The places that need changing in `environments/staging/main.tf`:
-
-    - `backend "s3" { bucket = "userXX-terraform-state-SUFFIX" ... }`
-    - `default_tags { tags = { Student = "userXX" ... } }`
-    - `module "app" { student_id = "userXX" ... }`
-
-    **b. Edit the prod wrapper:**
-
-    ```bash
-    cd ../prod
-    pwd     # should print: <...>/lab3/webapp-repo/environments/prod
-    ```
-
-    Open `main.tf` here too and make the same three replacements. (The region differs from staging — leave that alone.)
-
-    **c. Return to the repo root before committing:**
-
-    ```bash
-    cd ~/Advanced_Terraform/lab3/webapp-repo
-    pwd     # should print: <...>/lab3/webapp-repo
-    ```
+    `environments/prod/main.tf` is the same shape, reading `var.prod_region` (default `us-west-2`) instead. **Three regions are now in play:** you work in `us-east-2`, staging deploys to `us-east-1`, production to `us-west-2`. To move an environment somewhere else, change the default on that one variable — nothing else in the repo hardcodes a region.
 
 15. **Push to CodeCommit**
 
@@ -434,7 +412,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     > **Set `$STUDENT` first — do not use `$USER`.** On the lab EC2 box `$USER` is `ec2-user`, not your assigned ID. Step 23 wires the buildspec to `/userXX/lab3/...`, so these paths must match exactly or CodeBuild cannot resolve the value at build start:
     >
     > ```bash
-    > export STUDENT="userXX"   # your assigned ID — same value as student_id in Step 5
+    > export STUDENT="userXX"   # your assigned ID — same value as user_id in Step 5
     > ```
 
     ```bash
@@ -477,7 +455,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     phases:
       ...
     ```
-    Replace `userXX` with your assigned student ID, the same value you exported as `$STUDENT` in Step 21 and set as `student_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
+    Replace `userXX` with your assigned AWS login ID, the same value you exported as `$STUDENT` in Step 21 and set as `user_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
 
     > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue`. If you scope it down later, the `env:` block is the first thing to fail, before any build command runs.
 
@@ -525,7 +503,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
       value = var.db_host
     }
     ```
-    Replace `userXX` with your student ID. Two things to notice:
+    Replace `userXX` with your AWS login ID. Two things to notice:
 
     - **`sensitive = true`** keeps `db_password` out of `terraform plan` output and out of any plaintext output — Terraform prints `(sensitive value)` instead.
     - **The `default = "unset"`** matters. Plan-Production and the Validate stage run against code that has no `TF_VAR_db_*` set; without defaults those stages would fail with "No value for required variable."
@@ -675,7 +653,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 33. **Swap both environments to the serverless module**
 
-    The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`student_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
+    The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`user_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
 
     ```bash
     # You're cleaning up later — be in the webapp-repo root first.
@@ -689,7 +667,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
       module "app" {
     -   source      = "../../modules/app"
     +   source      = "../../modules/app-serverless"
-        student_id  = "userXX"
+        user_id  = "userXX"
         environment = "staging"
       }
     ```
@@ -741,12 +719,12 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```bash
     # Destroy staging
     cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging
-    terraform init
+    terraform init -backend-config="bucket=<your Lab 1 state bucket>" -backend-config="region=<your bucket region>"
     terraform destroy -auto-approve
 
     # Destroy production
     cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod
-    terraform init
+    terraform init -backend-config="bucket=<your Lab 1 state bucket>" -backend-config="region=<your bucket region>"
     terraform destroy -auto-approve
     ```
     **Option B: Push a destroy change**
@@ -758,7 +736,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     Verify no instances remain (regardless of whether you ran the bonus or stayed on EC2):
 
     ```bash
-    # EC2 instances tagged with your student ID — should return empty after destroy.
+    # EC2 instances tagged with your user ID — should return empty after destroy.
     aws ec2 describe-instances \
         --filters "Name=tag:Student,Values=userXX" "Name=instance-state-name,Values=running" \
         --query 'Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0]]' \
@@ -911,12 +889,12 @@ Filter by tag: `Student = userXX` in the AWS console.
 ```bash
 # 1. Destroy web application (staging)
 cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging
-terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX"
+terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your-bucket-region>"
 terraform destroy -auto-approve
 
 # 2. Destroy web application (prod)
 cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod
-terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX"
+terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your-bucket-region>"
 terraform destroy -auto-approve
 
 # 3. Destroy pipeline infrastructure

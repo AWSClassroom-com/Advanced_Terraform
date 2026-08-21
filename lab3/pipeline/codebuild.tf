@@ -5,7 +5,7 @@
 # =============================================================================
 # Pipeline artifacts (source code, plan files) are stored here between stages.
 # A random suffix keeps the bucket name globally unique even when multiple
-# cohorts run the lab with the same student_id (S3 bucket names are global).
+# cohorts run the lab with the same user_id (S3 bucket names are global).
 
 resource "random_string" "artifacts_suffix" {
   length  = 6
@@ -14,10 +14,10 @@ resource "random_string" "artifacts_suffix" {
 }
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "${var.student_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
+  bucket = "${var.user_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
 
   tags = {
-    Name = "${var.student_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
+    Name = "${var.user_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
   }
 }
 
@@ -35,7 +35,7 @@ resource "aws_s3_bucket_versioning" "artifacts" {
 # This catches formatting errors and syntax issues BEFORE any plan is generated
 
 resource "aws_codebuild_project" "validate" {
-  name          = "${var.student_id}-terraform-validate"
+  name          = "${var.user_id}-terraform-validate"
   description   = "Terraform format check and validate"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 10
@@ -49,6 +49,21 @@ resource "aws_codebuild_project" "validate" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+
+    environment_variable {
+      name  = "TF_VAR_user_id"
+      value = var.user_id
+    }
+
+    environment_variable {
+      name  = "STATE_BUCKET"
+      value = var.state_bucket_name
+    }
+
+    environment_variable {
+      name  = "BUCKET_REGION"
+      value = var.bucket_region
+    }
   }
 
   source {
@@ -79,7 +94,7 @@ resource "aws_codebuild_project" "validate" {
   }
 
   tags = {
-    Name  = "${var.student_id}-terraform-validate"
+    Name  = "${var.user_id}-terraform-validate"
     Stage = "validate"
   }
 }
@@ -91,7 +106,7 @@ resource "aws_codebuild_project" "validate" {
 # The plan file is saved as an artifact and passed to the apply stage
 
 resource "aws_codebuild_project" "plan_staging" {
-  name          = "${var.student_id}-terraform-plan-staging"
+  name          = "${var.user_id}-terraform-plan-staging"
   description   = "Terraform plan for staging environment"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 15
@@ -110,6 +125,21 @@ resource "aws_codebuild_project" "plan_staging" {
       name  = "TF_VAR_environment"
       value = "staging"
     }
+
+    environment_variable {
+      name  = "TF_VAR_user_id"
+      value = var.user_id
+    }
+
+    environment_variable {
+      name  = "STATE_BUCKET"
+      value = var.state_bucket_name
+    }
+
+    environment_variable {
+      name  = "BUCKET_REGION"
+      value = var.bucket_region
+    }
   }
 
   source {
@@ -126,7 +156,7 @@ resource "aws_codebuild_project" "plan_staging" {
           commands:
             - echo "=== Planning staging environment ==="
             - cd environments/staging
-            - terraform init
+            - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform plan -out=tfplan
             - echo "=== Staging plan complete ==="
       artifacts:
@@ -140,7 +170,7 @@ resource "aws_codebuild_project" "plan_staging" {
   }
 
   tags = {
-    Name        = "${var.student_id}-terraform-plan-staging"
+    Name        = "${var.user_id}-terraform-plan-staging"
     Stage       = "plan"
     Environment = "staging"
   }
@@ -153,7 +183,7 @@ resource "aws_codebuild_project" "plan_staging" {
 # Uses -auto-approve because the plan was already reviewed at the approval gate
 
 resource "aws_codebuild_project" "apply_staging" {
-  name          = "${var.student_id}-terraform-apply-staging"
+  name          = "${var.user_id}-terraform-apply-staging"
   description   = "Terraform apply for staging environment"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 30
@@ -167,6 +197,21 @@ resource "aws_codebuild_project" "apply_staging" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+
+    environment_variable {
+      name  = "TF_VAR_user_id"
+      value = var.user_id
+    }
+
+    environment_variable {
+      name  = "STATE_BUCKET"
+      value = var.state_bucket_name
+    }
+
+    environment_variable {
+      name  = "BUCKET_REGION"
+      value = var.bucket_region
+    }
   }
 
   source {
@@ -183,14 +228,14 @@ resource "aws_codebuild_project" "apply_staging" {
           commands:
             - echo "=== Applying to staging environment ==="
             - cd environments/staging
-            - terraform init
+            - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform apply -auto-approve tfplan
             - echo "=== Staging apply complete ==="
     EOF
   }
 
   tags = {
-    Name        = "${var.student_id}-terraform-apply-staging"
+    Name        = "${var.user_id}-terraform-apply-staging"
     Stage       = "apply"
     Environment = "staging"
   }
@@ -203,7 +248,7 @@ resource "aws_codebuild_project" "apply_staging" {
 # Production uses us-west-2 region for geographic separation
 
 resource "aws_codebuild_project" "plan_prod" {
-  name          = "${var.student_id}-terraform-plan-prod"
+  name          = "${var.user_id}-terraform-plan-prod"
   description   = "Terraform plan for production environment"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 15
@@ -222,6 +267,21 @@ resource "aws_codebuild_project" "plan_prod" {
       name  = "TF_VAR_environment"
       value = "prod"
     }
+
+    environment_variable {
+      name  = "TF_VAR_user_id"
+      value = var.user_id
+    }
+
+    environment_variable {
+      name  = "STATE_BUCKET"
+      value = var.state_bucket_name
+    }
+
+    environment_variable {
+      name  = "BUCKET_REGION"
+      value = var.bucket_region
+    }
   }
 
   source {
@@ -238,7 +298,7 @@ resource "aws_codebuild_project" "plan_prod" {
           commands:
             - echo "=== Planning production environment ==="
             - cd environments/prod
-            - terraform init
+            - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform plan -out=tfplan
             - echo "=== Production plan complete ==="
       artifacts:
@@ -252,7 +312,7 @@ resource "aws_codebuild_project" "plan_prod" {
   }
 
   tags = {
-    Name        = "${var.student_id}-terraform-plan-prod"
+    Name        = "${var.user_id}-terraform-plan-prod"
     Stage       = "plan"
     Environment = "production"
   }
@@ -265,7 +325,7 @@ resource "aws_codebuild_project" "plan_prod" {
 # This is the final stage -- changes are now live in production
 
 resource "aws_codebuild_project" "apply_prod" {
-  name          = "${var.student_id}-terraform-apply-prod"
+  name          = "${var.user_id}-terraform-apply-prod"
   description   = "Terraform apply for production environment"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 30
@@ -279,6 +339,21 @@ resource "aws_codebuild_project" "apply_prod" {
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+
+    environment_variable {
+      name  = "TF_VAR_user_id"
+      value = var.user_id
+    }
+
+    environment_variable {
+      name  = "STATE_BUCKET"
+      value = var.state_bucket_name
+    }
+
+    environment_variable {
+      name  = "BUCKET_REGION"
+      value = var.bucket_region
+    }
   }
 
   source {
@@ -295,14 +370,14 @@ resource "aws_codebuild_project" "apply_prod" {
           commands:
             - echo "=== Applying to production environment ==="
             - cd environments/prod
-            - terraform init
+            - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform apply -auto-approve tfplan
             - echo "=== Production apply complete ==="
     EOF
   }
 
   tags = {
-    Name        = "${var.student_id}-terraform-apply-prod"
+    Name        = "${var.user_id}-terraform-apply-prod"
     Stage       = "apply"
     Environment = "production"
   }

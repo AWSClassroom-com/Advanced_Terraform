@@ -260,11 +260,11 @@ The checkout team's near-miss happened because a junior engineer thought they we
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Open `terraform.tfvars` and set both variables to your assigned student ID. Use a **concrete** value like `user07` — the `student_id` variable enforces the regex `^user[0-9]{2}$`, so the literal placeholder `userXX` will fail at plan time:
+    Open `terraform.tfvars` and set `user_id` to your assigned AWS login ID. Use a **concrete** value like `user07` — the `user_id` variable enforces the regex `^user[0-9]{2}$`, so the literal placeholder `userXX` will fail at plan time:
 
     ```hcl
-    student_id = "user07"  # ← REPLACE 07 with YOUR assigned user number. Must match ^user[0-9]{2}$
-    account    = "user07"  # ← Same value as student_id (used as a prefix for Part D's app-config SSM parameter)
+    user_id = "user07"  # ← REPLACE 07 with YOUR assigned user number. Must match ^user[0-9]{2}$
+    user_id    = "user07"  # ← Same value as user_id (used as a prefix for Part D's app-config SSM parameter)
     ```
 
     Leave `region` and `state_bucket_name` commented out for now. You'll uncomment `state_bucket_name` after Part C completes.
@@ -275,7 +275,7 @@ The checkout team's near-miss happened because a junior engineer thought they we
     terraform plan
     terraform apply
     ```
-    Review the plan, then type `yes` at the apply prompt. The apply creates an `aws_s3_bucket` named `<student_id>-terraform-state-<random6>` (the random suffix guarantees the name is globally unique — no two students can collide).
+    Review the plan, then type `yes` at the apply prompt. The apply creates an `aws_s3_bucket` named `<user_id>-terraform-state-<random6>` (the random suffix guarantees the name is globally unique — no two students can collide).
 
     > **Notice `aws_s3_bucket_metric` in the plan.** S3 reports storage metrics for free, but request metrics such as `GetRequests` and `PutRequests` are opt-in: nothing records them until a metrics configuration asks for them. Turning it on here means every `terraform plan` and `apply` you run for the rest of the day leaves a measurable trace on this bucket, which is what Lab 4's dashboard reads. It is worth seeing the order of events: you have to decide to collect the data **before** the activity happens. Auditing is not something you can switch on afterwards and backfill.
 
@@ -320,7 +320,9 @@ The checkout team's near-miss happened because a junior engineer thought they we
     Now re-init with the migration flag so Terraform copies your existing local state into the bucket:
 
     ```bash
-    terraform init -migrate-state
+    terraform init -migrate-state \
+        -backend-config="bucket=<paste-your-state_bucket_name>" \
+        -backend-config="region=<your-bucket-region>"
     ```
     When prompted *"Do you want to copy existing state to the new backend?"*, type `yes`. Terraform pushes your current workspace's state file up to S3 at `env:/<workspace>/lab1-app/terraform.tfstate`. Verify:
 
@@ -477,8 +479,10 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     ```bash
     cp terraform.tfvars.example terraform.tfvars
 
-    # Edit terraform.tfvars with your account
-    terraform init
+    # Edit terraform.tfvars and set user_id
+    terraform init \
+        -backend-config="bucket=<paste-your-state_bucket_name>" \
+        -backend-config="region=<your-bucket-region>"
     terraform plan
     terraform apply
     ```
@@ -512,7 +516,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
       config = {
         bucket = var.state_bucket_name
         key    = "networking/terraform.tfstate"
-        region = var.region
+        region = var.primary_region
       }
     }
 
@@ -530,7 +534,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     resource "aws_ssm_parameter" "app_config" {
       count = local.cross_state_enabled ? 1 : 0
 
-      name = "/${var.account}/${local.environment}/app-config"
+      name = "/${var.user_id}/${local.environment}/app-config"
       type = "String"
       value = jsonencode({
         environment       = local.environment
@@ -564,8 +568,8 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     Open `terraform.tfvars` and **uncomment** the `state_bucket_name` line (it was commented out when you copied from the example), pasting in the bucket name you captured in Step 18:
 
     ```hcl
-    student_id        = "userXX"            # already set in Step 12
-    account           = "userXX"            # already set in Step 12
+    user_id        = "userXX"            # already set in Step 12
+    user_id           = "userXX"            # already set in Step 12
     state_bucket_name = "userXX-terraform-state-abc123"  # <- uncomment + paste your actual bucket
     ```
 
@@ -710,21 +714,22 @@ Now you'll implement the same deployment using a directory structure to compare 
     ```hcl
 
     # modules/app/main.tf - Shared application logic
-    variable "account" {}
+    variable "user_id" {}
     variable "environment" {}
     variable "state_bucket_name" {}
+    variable "bucket_region" {}
 
     data "terraform_remote_state" "networking" {
       backend = "s3"
       config = {
     bucket = var.state_bucket_name
     key    = "networking/terraform.tfstate"
-    region = "<your-assigned-region>"  # e.g. us-east-2
+    region = var.bucket_region
       }
     }
 
     resource "aws_ssm_parameter" "app_config" {
-      name  = "/${var.account}/${var.environment}/app-config-dir"
+      name  = "/${var.user_id}/${var.environment}/app-config-dir"
       type  = "String"
       value = jsonencode({
     environment = var.environment
@@ -746,7 +751,7 @@ Now you'll implement the same deployment using a directory structure to compare 
     module "app" {
       source = "../modules/app"
 
-      account        = var.account
+      user_id        = var.user_id
       environment       = "dev"  # Explicit, not from workspace
       state_bucket_name = var.state_bucket_name
     }

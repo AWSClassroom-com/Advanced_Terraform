@@ -1,17 +1,17 @@
 # lab2-import/variables.tf
 
-variable "region" {
+variable "primary_region" {
   description = "AWS region. No default — set in terraform.tfvars to whatever your instructor assigned."
   type        = string
 }
 
-variable "account" {
-  description = "Your IAM user account name (e.g. user01). Used to prefix resource names. Same value as Day 1-2 var.account."
+variable "user_id" {
+  description = "Your assigned AWS login ID (for example user07). Used to prefix resource names."
   type        = string
 
   validation {
-    condition     = can(regex("^user[0-9]{2}$", var.account))
-    error_message = "account must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned IAM username."
+    condition     = can(regex("^user[0-9]{2}$", var.user_id))
+    error_message = "user_id must match 'userNN' with two digits - for example user07. Replace the placeholder from terraform.tfvars.example with your assigned AWS login ID."
   }
 }
 

@@ -17,12 +17,17 @@ terraform {
   #   bucket = "user01-terraform-state-abc123"
   # -----------------------------------------------------------------
   # backend "s3" {
-  #   bucket       = "userXX-terraform-state-SUFFIX"  # <- Replace with state_bucket_name
   #   key          = "lab1-app/terraform.tfstate"
-  #   region       = "us-east-2"
   #   encrypt      = true
-  #   use_lockfile = true  # Uses S3 native locking instead of DynamoDB
+  #   use_lockfile = true  # S3 native locking - no DynamoDB table needed
   # }
+  #
+  # Note there is no bucket or region here. A backend block cannot read
+  # variables, so those two values are passed at init time instead:
+  #   terraform init -migrate-state \
+  #     -backend-config="bucket=<your state bucket>" \
+  #     -backend-config="region=<your bucket_region>"
+  # This is the same -backend-config pattern you used on Day 1-2.
 
   required_providers {
     aws = {
@@ -43,11 +48,11 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-2"
+  region = var.primary_region
 
   default_tags {
     tags = {
-      Student     = "userXX"
+      Student     = var.user_id
       Project     = "terraform-state-infra"
       Environment = "management"
       ManagedBy   = "Terraform"

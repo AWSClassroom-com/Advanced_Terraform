@@ -1,29 +1,24 @@
 # variables.tf
 # Input variables for Lab 1 state infrastructure
 
-variable "student_id" {
-  description = "Your assigned student ID (e.g., user01) — used to name the S3 state bucket"
+variable "user_id" {
+  description = "Your assigned AWS login ID (for example user07). Names the S3 state bucket and every resource this lab creates."
   type        = string
 
   validation {
-    condition     = can(regex("^user[0-9]{2}$", var.student_id))
-    error_message = "Student ID must match the pattern 'userXX' where XX is a two-digit number."
+    condition     = can(regex("^user[0-9]{2}$", var.user_id))
+    error_message = "user_id must match 'userNN' with two digits - for example user07."
   }
 }
 
-variable "account" {
-  description = "Student account identifier for app-config naming (typically the same as student_id)."
+variable "primary_region" {
+  description = "The region you work in: this lab's resources and your state bucket are created here. Change it here, not in the code."
   type        = string
-  default     = ""
-
-  validation {
-    condition     = var.account == "" || can(regex("^user[0-9]{2}$", var.account))
-    error_message = "account must be empty (Part A) or match 'userNN' with two digits - for example user07."
-  }
+  default     = "us-east-2"
 }
 
-variable "region" {
-  description = "AWS region for resources (e.g., us-east-2)."
+variable "bucket_region" {
+  description = "Region the S3 state bucket lives in. Separate from primary_region because a backend's region is the BUCKET's region, independent of where resources deploy. Read by the cross-state data source in main.tf; the backend itself takes it from -backend-config at init time."
   type        = string
   default     = "us-east-2"
 }

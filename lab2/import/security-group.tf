@@ -10,12 +10,12 @@
 # is already attached to running infrastructure).
 
 resource "aws_security_group" "allow-http-ssh" {
-  name        = "${var.account}-allow-http-ssh"
+  name        = "${var.user_id}-allow-http-ssh"
   description = "Enable HTTP and SSH Access"
   vpc_id      = aws_vpc.custom-vpc.id
 
   tags = {
-    Name = "${var.account}-allow-http-ssh"
+    Name = "${var.user_id}-allow-http-ssh"
   }
 
   lifecycle {

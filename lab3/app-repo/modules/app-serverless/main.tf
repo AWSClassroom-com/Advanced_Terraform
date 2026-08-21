@@ -1,7 +1,7 @@
 # modules/app-serverless/main.tf
 #
 # BONUS module — drop-in replacement for modules/app/. Same input/output
-# interface (student_id, environment in; instance_id, vpc_id, public_ip out)
+# interface (user_id, environment in; instance_id, vpc_id, public_ip out)
 # so swapping `source = "../../modules/app"` for `source = "../../modules/app-serverless"`
 # in the wrapper is the entire change required.
 #
@@ -27,7 +27,7 @@ data "archive_file" "lambda_zip" {
 }
 
 resource "aws_iam_role" "lambda_exec" {
-  name = "${var.student_id}-${var.environment}-lambda-exec"
+  name = "${var.user_id}-${var.environment}-lambda-exec"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -39,7 +39,7 @@ resource "aws_iam_role" "lambda_exec" {
   })
 
   tags = {
-    Student     = var.student_id
+    Student     = var.user_id
     Environment = var.environment
   }
 }
@@ -50,17 +50,17 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/${var.student_id}-${var.environment}-greeter"
+  name              = "/aws/lambda/${var.user_id}-${var.environment}-greeter"
   retention_in_days = 7
 
   tags = {
-    Student     = var.student_id
+    Student     = var.user_id
     Environment = var.environment
   }
 }
 
 resource "aws_lambda_function" "greeter" {
-  function_name    = "${var.student_id}-${var.environment}-greeter"
+  function_name    = "${var.user_id}-${var.environment}-greeter"
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   role             = aws_iam_role.lambda_exec.arn
@@ -69,7 +69,7 @@ resource "aws_lambda_function" "greeter" {
 
   environment {
     variables = {
-      STUDENT_ID  = var.student_id
+      STUDENT_ID  = var.user_id
       ENVIRONMENT = var.environment
     }
   }
@@ -77,18 +77,18 @@ resource "aws_lambda_function" "greeter" {
   depends_on = [aws_iam_role_policy_attachment.lambda_logs, aws_cloudwatch_log_group.lambda]
 
   tags = {
-    Name        = "${var.student_id}-${var.environment}-greeter"
-    Student     = var.student_id
+    Name        = "${var.user_id}-${var.environment}-greeter"
+    Student     = var.user_id
     Environment = var.environment
   }
 }
 
 resource "aws_apigatewayv2_api" "main" {
-  name          = "${var.student_id}-${var.environment}-api"
+  name          = "${var.user_id}-${var.environment}-api"
   protocol_type = "HTTP"
 
   tags = {
-    Student     = var.student_id
+    Student     = var.user_id
     Environment = var.environment
   }
 }
@@ -112,7 +112,7 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 
   tags = {
-    Student     = var.student_id
+    Student     = var.user_id
     Environment = var.environment
   }
 }

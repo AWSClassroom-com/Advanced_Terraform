@@ -12,7 +12,7 @@ The current upstream `lab3/app-repo/modules/app/main.tf` deploys only two `aws_s
 modules/
 ├── app/                      # Main path — 7 resources per env, $0.0104/hr per env
 │   ├── main.tf               # VPC + subnet + IGW + RT + RTA + SG + EC2 (httpd)
-│   ├── variables.tf          # student_id, environment, instance_count
+│   ├── variables.tf          # user_id, environment, instance_count
 │   └── outputs.tf            # public_ip, instance_id, vpc_id, api_url (null)
 └── app-serverless/           # BONUS — Lambda + API Gateway HTTP API, $0 free tier
     ├── main.tf
@@ -39,7 +39,7 @@ Per the CourseCreationKit NO-DELETION policy, archive the old `lab3/app-repo/` t
 
 ## Module interface (so the swap works cleanly)
 
-Both `modules/app` and `modules/app-serverless` accept the **same inputs** (`student_id`, `environment`, `instance_count`) and expose the **same outputs** (`public_ip`, `api_url`, `instance_id`, `vpc_id`). The only difference: `public_ip` + `vpc_id` are non-null for EC2; `api_url` is non-null for serverless. The wrapper outputs surface all four either way, so verification commands work without conditional logic.
+Both `modules/app` and `modules/app-serverless` accept the **same inputs** (`user_id`, `environment`, `instance_count`) and expose the **same outputs** (`public_ip`, `api_url`, `instance_id`, `vpc_id`). The only difference: `public_ip` + `vpc_id` are non-null for EC2; `api_url` is non-null for serverless. The wrapper outputs surface all four either way, so verification commands work without conditional logic.
 
 ## Switching to serverless (the bonus Task 7 in Lab 3)
 

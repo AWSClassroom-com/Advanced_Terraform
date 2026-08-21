@@ -10,7 +10,7 @@ CloudWatch dashboard summarizing Terraform activity: CodeBuild build duration + 
 
 | Folder | Used for |
 |--------|----------|
-| [`observability/`](./observability/) | Single dashboard.tf creating `aws_cloudwatch_dashboard.terraform_ops` named `${var.account}-terraform-operations`. Standalone — does not depend on any other module's outputs (uses `var.state_bucket_name` directly so the S3 widgets always work regardless of bucket suffix). |
+| [`observability/`](./observability/) | Single dashboard.tf creating `aws_cloudwatch_dashboard.terraform_ops` named `${var.user_id}-terraform-operations`. Standalone — does not depend on any other module's outputs (uses `var.state_bucket_name` directly so the S3 widgets always work regardless of bucket suffix). |
 
 ## What's different from a "standard" Terraform pipeline dashboard
 

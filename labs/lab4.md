@@ -158,7 +158,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     > **Where this log group came from.** Event history is not a log group and cannot be queried here. Delivering to CloudWatch Logs needs a **trail**, which your instructor created for the class. It captures data events too.
 
-    > **The log group is shared by the whole class.** Filter on your own bucket or student ID.
+    > **The log group is shared by the whole class.** Filter on your own bucket or user ID.
 
     **Expected result** (one row per event, sample):
 
@@ -223,7 +223,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     aws logs get-query-results --region us-east-2 --query-id "$QID"         --query 'results[*][?field!=`@ptr`].value' --output text
     ```
-    Replace `userXX` with your assigned student ID.
+    Replace `userXX` with your assigned AWS login ID.
 
     **Expected result** (sample):
 
@@ -247,7 +247,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | sort @timestamp desc
     | limit 50'
     ```
-    > **Saved queries are not private.** CloudWatch stores them per Region, not per user, so everyone with access sees them all. Hence the student ID in the name.
+    > **Saved queries are not private.** CloudWatch stores them per Region, not per user, so everyone with access sees them all. Hence the user ID in the name.
 
 ---
 
@@ -294,16 +294,16 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
 
     ```hcl
     region            = "us-east-2"                        # Whatever region your instructor assigned
-    account           = "user07"                           # Same value you used as student_id in Labs 1 and 3
+    user_id           = "user07"                           # Same value you used as user_id in Labs 1 and 3
     state_bucket_name = "user07-terraform-state-ab12cd"    # Exact bucket name from Lab 1 outputs
     ```
-    > **Naming convention.** Lab 4's stack declares its input variable as `account` (matching Lab 2's lean VPC pattern), but the dashboard's CloudWatch widgets reference Lab 3 resources by name — e.g., `${var.account}-terraform-validate`. Lab 3 created those resources using `var.student_id`. **For the dashboard to actually find Lab 3's CodeBuild projects and pipeline, set `account` here to the same value you used as `student_id` in Labs 1 and 3.** The example file ships with `account = "userXX"`; replace it with your real ID, such as `user07`.
+    > **Use the same `user_id` as Labs 1 and 3.** The dashboard's widgets look up Lab 3's resources by name — `${var.user_id}-terraform-validate` and friends — so a different value here points every widget at something that does not exist.
 
     > **Bucket name handling:** `dashboard.tf` uses `var.state_bucket_name` directly, so the S3 widgets read from whatever bucket name you paste — Lab 1's random-suffix bucket works as-is, no edits to the dashboard code required.
 
     > **Don't edit `providers.tf`.** The backend block in that file is intentionally *partial* — it declares the `key`, `encrypt`, and `use_lockfile` settings but leaves `bucket` and `region` out, so they get supplied at `terraform init` time via `-backend-config` flags (Step 12). This matches the pattern Lab 3's `lab3/pipeline/providers.tf` uses and keeps the same file portable across students and regions.
 
-    > **Region.** `dashboard.tf` reads `var.region`. If that does not match where Lab 3 ran, every widget is empty.
+    > **Region.** `dashboard.tf` reads `var.primary_region`. If that does not match where Lab 3 ran, every widget is empty.
 
     > **State bucket region ≠ deploy region.** The S3 backend's `region` setting names the **bucket's** region, *not* the region where the resources are being deployed. They're independent. A team can keep state in `us-east-1` for audit and deploy resources to `us-west-2` — the backend `region` would still be `us-east-1` because that's where the bucket lives. In Step 12, pass the region your Lab 1 bucket was created in (run `aws s3api get-bucket-location --bucket <your-state-bucket-name>` if you're unsure — note that a `None`/`null` response means `us-east-1`, an AWS quirk).
 
@@ -335,7 +335,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
     Open the URL in your browser. You should see the widget rows described in Step 10.
 
-    > **Some widgets will still be empty when you finish, and that is fine.** CloudWatch takes 5-10 minutes to surface a new metric. Do not sit and wait. If a widget stays empty, check the two things that are actually ever wrong: that `account` matches the `student_id` you used in Lab 3, and that `state_bucket_name` matches `terraform output state_bucket_name` from Lab 1.
+    > **Some widgets will still be empty when you finish, and that is fine.** CloudWatch takes 5-10 minutes to surface a new metric. Do not sit and wait. If a widget stays empty, check the two things that are actually ever wrong: that `user_id` matches the `user_id` you used in Lab 3, and that `state_bucket_name` matches `terraform output state_bucket_name` from Lab 1.
 
 ---
 
@@ -378,12 +378,12 @@ In order of likelihood:
 1. **Metrics not populated yet** — wait 5-10 minutes after the source resource emits its first metric.
 2. **The two S3 widgets** — these read `GetRequests`/`PutRequests`, which S3 publishes only when a request metrics configuration exists on the bucket. Lab 1 creates one (`aws_s3_bucket_metric.entire_bucket`), so they should populate. If they don't: confirm that resource is in your `lab1/state-infra` state (`terraform state list | grep metric`), and remember metrics start from the moment the configuration is created, so only activity *after* Lab 1's apply is counted. Allow 5-10 minutes after a `plan` or `apply` for data to appear.
 3. **CodeBuild / Pipeline widgets** — only populate after Lab 3's pipeline has actually executed at least once. If Lab 3 was never deployed (or the pipeline never ran), these widgets will stay empty.
-4. **`var.account` doesn't match your Lab 3 `student_id`** — CodeBuild and Pipeline widgets reference `${var.account}-terraform-validate` etc. If you set `account = "userxx"` here but used `student_id = "user07"` in Lab 3, the widgets point at non-existent resources. Re-check `terraform.tfvars`.
-5. **Wrong region** — `dashboard.tf` reads `var.region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
+4. **`user_id` doesn't match the one you used in Lab 3** — the CodeBuild and Pipeline widgets reference `${var.user_id}-terraform-validate` and similar. A mismatch points them at resources that do not exist. Re-check `terraform.tfvars`.
+5. **Wrong region** — `dashboard.tf` reads `var.primary_region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
 
 ### Query returns nothing
 
-Check the `SOURCE` line is still there and still names `/aws/cloudtrail/advanced-terraform`. Then widen the window, and confirm your filter values match exactly — bucket names and student IDs are case-sensitive. From the CLI, `"status": "Running"` means the query has not finished; re-run `get-query-results` with the same ID.
+Check the `SOURCE` line is still there and still names `/aws/cloudtrail/advanced-terraform`. Then widen the window, and confirm your filter values match exactly — bucket names and user IDs are case-sensitive. From the CLI, `"status": "Running"` means the query has not finished; re-run `get-query-results` with the same ID.
 
 ---
 

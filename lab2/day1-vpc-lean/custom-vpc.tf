@@ -23,7 +23,7 @@ resource "aws_vpc" "custom-vpc" {
   enable_dns_support   = true
 
   tags = {
-    Name = "${var.account}-${var.vpc_name}"
+    Name = "${var.user_id}-${var.vpc_name}"
   }
 }
 
@@ -34,7 +34,7 @@ resource "aws_subnet" "subnet-a" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.account}-${var.public_subnet_a_name}"
+    Name = "${var.user_id}-${var.public_subnet_a_name}"
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.custom-vpc.id
 
   tags = {
-    Name = "${var.account}-igw"
+    Name = "${var.user_id}-igw"
   }
 }
 
@@ -51,7 +51,7 @@ resource "aws_internet_gateway" "igw" {
 #   allocation_id = aws_eip.nat.id
 #   subnet_id     = aws_subnet.subnet-a.id
 #   tags = {
-#     Name = "${var.account}-ngw"
+#     Name = "${var.user_id}-ngw"
 #   }
 # }
 
@@ -64,7 +64,7 @@ resource "aws_route_table" "public_rt" {
   }
 
   tags = {
-    Name = "${var.account}-${var.route_table_name}"
+    Name = "${var.user_id}-${var.route_table_name}"
   }
 }
 

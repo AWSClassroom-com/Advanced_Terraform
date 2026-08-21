@@ -7,7 +7,7 @@ This directory contains the complete solution for Lab 1 of Terraform Day 3.
 ```
 lab1/state-infra/
 ├── providers.tf              # AWS/random/time providers + commented backend block
-├── variables.tf              # student_id, account, region, state_bucket_name
+├── variables.tf              # user_id, primary_region, bucket_region, state_bucket_name
 ├── main.tf                   # S3 state bucket, locking demo, Part D cross-state
 ├── workspace_guard.tf        # null_resource preconditions blocking bad workspaces
 ├── outputs.tf                # state_bucket_name and the Part D outputs
@@ -19,12 +19,12 @@ lab1/state-infra/
 
 ### Part A: Initial Deployment (Local State)
 
-1. **Set your student ID** in `terraform.tfvars`:
+1. **Set your AWS login ID** in `terraform.tfvars`:
    ```hcl
-   student_id = "user07"   # your assigned IAM username
+   user_id = "user07"   # your assigned AWS login ID
    account    = "user07"   # same value; used by Part D
    ```
-   `student_id` is validated against `^user[0-9]{2}$` — the placeholder `userXX` is rejected on purpose.
+   `user_id` is validated against `^user[0-9]{2}$` — the placeholder `userXX` is rejected on purpose.
 
 2. **Select a workspace, then deploy**:
    ```bash
@@ -94,11 +94,11 @@ Set `state_bucket_name` in `terraform.tfvars` **after** `lab1/networking` has be
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| S3 Bucket | `<student_id>-terraform-state-<random6>` | Stores Terraform state files |
+| S3 Bucket | `<user_id>-terraform-state-<random6>` | Stores Terraform state files |
 | S3 Versioning | (on bucket) | Preserves state file history |
 | S3 Encryption | (on bucket) | AES256 encryption at rest |
 | S3 Public Access Block | (on bucket) | Prevents public access |
-| SSM Parameter | `/<student_id>/lab1/lock-demo` | Demo resource for the locking test |
+| SSM Parameter | `/<user_id>/lab1/lock-demo` | Demo resource for the locking test |
 | Time Sleep | (30 seconds) | Creates the delay the locking demo needs |
 | Null Resource | `workspace_guard` | Preconditions rejecting invalid workspaces |
 | SSM Parameter | `/<account>/<workspace>/app-config` | Part D only — gated on `state_bucket_name` |

@@ -2,8 +2,8 @@
 #
 # Copy to terraform.tfvars and fill in.
 
-account = "userxx"   # Your IAM username, same as Day 1-2 (e.g. user07)
-region  = ""         # The AWS region your instructor assigned (e.g. us-east-2)
+user_id        = "userxx"     # Your assigned AWS login ID (e.g. user07)
+primary_region = "us-east-2"  # The region the resources you are importing live in
 
 # VPC stack resource IDs — get from Day 1-2 outputs OR
 # from `terraform output` in lab2-day1-vpc-lean/.

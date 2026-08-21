@@ -11,7 +11,7 @@ resource "aws_vpc" "shared" {
   enable_dns_support   = true
 
   tags = {
-    Name    = "${var.account}-shared-vpc"
+    Name    = "${var.user_id}-shared-vpc"
     Purpose = "shared-networking"
   }
 }
@@ -20,7 +20,7 @@ resource "aws_internet_gateway" "shared" {
   vpc_id = aws_vpc.shared.id
 
   tags = {
-    Name = "${var.account}-shared-igw"
+    Name = "${var.user_id}-shared-igw"
   }
 }
 
@@ -31,7 +31,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.account}-shared-public"
+    Name = "${var.user_id}-shared-public"
     Tier = "public"
   }
 }
@@ -45,7 +45,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "${var.account}-shared-public-rt"
+    Name = "${var.user_id}-shared-public-rt"
   }
 }
 
@@ -55,7 +55,7 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_security_group" "shared_app" {
-  name_prefix = "${var.account}-shared-app-"
+  name_prefix = "${var.user_id}-shared-app-"
   description = "Default app security group exposed to consumers via remote state"
   vpc_id      = aws_vpc.shared.id
 
@@ -77,6 +77,6 @@ resource "aws_security_group" "shared_app" {
   }
 
   tags = {
-    Name = "${var.account}-shared-app-sg"
+    Name = "${var.user_id}-shared-app-sg"
   }
 }

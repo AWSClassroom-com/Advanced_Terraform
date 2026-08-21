@@ -150,10 +150,10 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Edit `terraform.tfvars` and set **both** `account` and `region` — they're both required by the lean stack (`variables.tf` declares `region` with no default, so leaving it empty will fail with "No value for required variable"):
+    Edit `terraform.tfvars` and set **both** `user_id` and `region` — they're both required by the lean stack (`variables.tf` declares `region` with no default, so leaving it empty will fail with "No value for required variable"):
 
     ```hcl
-    account = "userxx"     # your IAM username (e.g., user07) — match $STUDENT from the env-var block above
+    user_id = "userxx"     # your IAM username (e.g., user07) — match $STUDENT from the env-var block above
     region  = "us-east-2"  # your assigned deployment region — match $DEPLOY_REGION from the env-var block above
     ```
 
@@ -203,7 +203,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     Edit `terraform.tfvars` with the IDs you captured in Task 1. The `region` field here is the **deployment region** — where your imported VPC and SG actually live in AWS. This is `$DEPLOY_REGION` from the Task 1 env-var block.
 
     ```hcl
-    account = "userxx"      # your IAM username (e.g., user07) — same value as $STUDENT
+    user_id = "userxx"      # your IAM username (e.g., user07) — same value as $STUDENT
     region  = "us-east-2"   # DEPLOYMENT region — where the resources you're importing live
                             # (same as $DEPLOY_REGION from Task 1)
 
@@ -378,7 +378,7 @@ Terraform 1.5+ can attempt to **generate config from existing AWS resources**. L
     | `availability_zone = data.aws_subnet.imported.availability_zone` | **data source** | Read from the real subnet at plan time — and avoids the `availability_zone_id` conflict entirely. |
     | `map_public_ip_on_launch = true` | **literal** | A deliberate setting. Literals are fine for values that are real decisions. |
 
-    The tags follow the same pattern: generated hardcodes `Name = "user07-public-subnet-a"`; the cleaned version uses `Name = "${var.account}-public-subnet-a"`, so the same file works for every student.
+    The tags follow the same pattern: generated hardcodes `Name = "user07-public-subnet-a"`; the cleaned version uses `Name = "${var.user_id}-public-subnet-a"`, so the same file works for every student.
 
     > **Note:** nothing in the generated file is wrong. It is an accurate snapshot of what exists right now. Cleanup turns that snapshot into configuration: references for dependencies, variables for reuse, and no computed attributes.
 

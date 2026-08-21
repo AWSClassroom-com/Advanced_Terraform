@@ -23,7 +23,7 @@ resource "random_string" "suffix" {
 # ---------------------------------------------------------------
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "${var.student_id}-terraform-state-${random_string.suffix.result}"
+  bucket = "${var.user_id}-terraform-state-${random_string.suffix.result}"
 
   # In production, set this to true to prevent accidental deletion.
   # For this lab, we leave it false so you can clean up afterward.
@@ -32,7 +32,7 @@ resource "aws_s3_bucket" "terraform_state" {
   }
 
   tags = {
-    Name = "${var.student_id}-terraform-state-${random_string.suffix.result}"
+    Name = "${var.user_id}-terraform-state-${random_string.suffix.result}"
   }
 }
 
@@ -81,7 +81,7 @@ resource "time_sleep" "locking_demo" {
 }
 
 resource "aws_ssm_parameter" "lock_demo" {
-  name        = "/${var.student_id}/lab1/lock-demo"
+  name        = "/${var.user_id}/lab1/lock-demo"
   description = "Parameter created after 30-second delay to demonstrate state locking"
   type        = "String"
   value       = "Lock demo completed at ${timestamp()}"
@@ -89,7 +89,7 @@ resource "aws_ssm_parameter" "lock_demo" {
   depends_on = [time_sleep.locking_demo]
 
   tags = {
-    Name = "${var.student_id}-lock-demo"
+    Name = "${var.user_id}-lock-demo"
   }
 
   lifecycle {
@@ -114,7 +114,7 @@ data "terraform_remote_state" "networking" {
   config = {
     bucket = var.state_bucket_name
     key    = "networking/terraform.tfstate"
-    region = var.region
+    region = var.bucket_region
   }
 }
 
@@ -132,7 +132,7 @@ locals {
 resource "aws_ssm_parameter" "app_config" {
   count = local.cross_state_enabled ? 1 : 0
 
-  name = "/${var.account}/${local.environment}/app-config"
+  name = "/${var.user_id}/${local.environment}/app-config"
   type = "String"
   value = jsonencode({
     environment       = local.environment

@@ -1,8 +1,12 @@
 # terraform.tfvars
-# Replace userXX with your assigned student ID
+# Replace userXX with your assigned AWS login ID
 # Replace SUFFIX with the random suffix from your Lab 1 terraform output
 
-student_id = "userXX"
+user_id = "userXX"
+
+# Optional overrides:
+# primary_region = "us-east-2"   # where the pipeline itself runs
+# bucket_region  = "us-east-2"   # where your state bucket lives
 
 # This value comes from Lab 1 output. After running `terraform apply` in
 # lab1-state-infra, run `terraform output` to get your actual value.
