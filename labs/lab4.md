@@ -276,12 +276,15 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     |--------|---------------|---------------|
     | CodeBuild Duration | `AWS/CodeBuild` namespace, `Duration` metric | Build execution time across the 5 pipeline projects |
     | Build Success vs. Failure | `AWS/CodeBuild`, `SucceededBuilds` + `FailedBuilds` | Apply-stage outcomes for staging and prod |
-    | Pipeline Execution Counters | `AWS/CodePipeline`, `PipelineExecutionSucceeded` + `PipelineExecutionFailed` | Cumulative pass/fail for `${var.user_id}-terraform-pipeline` |
-    | Pipeline Execution Time Series | Same metrics, stacked area | Trend over time |
+    | Successful Applies | `AWS/CodeBuild`, `SucceededBuilds` on the two apply projects | How many deployments actually completed |
+    | Failed Builds | `AWS/CodeBuild`, `FailedBuilds` across all 5 projects | Any stage that failed, not just applies |
+    | Build Activity by Stage | `AWS/CodeBuild`, `Builds`, stacked area | Which stages ran, and when |
     | State Bucket Operations | `AWS/S3`, `GetRequests` + `PutRequests` on `var.state_bucket_name` | Reads (plans) vs. writes (applies) on the state bucket |
     | State Bucket PutRequests | `AWS/S3`, `PutRequests` on `var.state_bucket_name` with FilterId `EntireBucket` | State writes, including the `.tflock` lock and unlock |
     | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Logs Insights |
     | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
+
+    > **Why no pipeline-level widgets?** CodePipeline publishes almost nothing to CloudWatch. Metrics arrived only in 2025, only for V2 pipelines, and even there the list is `PipelineDuration` and `FailedPipelineExecutions` — there is no success metric at all. Every stage of this pipeline is a CodeBuild project, and CodeBuild does publish `SucceededBuilds`, `FailedBuilds`, `Builds` and `Duration` per project, so the dashboard asks CodeBuild instead. Worth remembering when you build your own: check that a metric exists before you design a widget around it.
 
     > **About the S3 widgets.** Both read request metrics, which Lab 1 enabled with `aws_s3_bucket_metric`. Lock activity is counted inside the bucket-wide `PutRequests` total, because metrics filter on a key *prefix* and `.tflock` is a *suffix*. Appendix A covers the alternatives.
 11. **Configure Variables**
@@ -377,8 +380,8 @@ In order of likelihood:
 
 1. **Metrics not populated yet** — wait 5-10 minutes after the source resource emits its first metric.
 2. **The two S3 widgets** — these read `GetRequests`/`PutRequests`, which S3 publishes only when a request metrics configuration exists on the bucket. Lab 1 creates one (`aws_s3_bucket_metric.entire_bucket`), so they should populate. If they don't: confirm that resource is in your `lab1/state-infra` state (`terraform state list | grep metric`), and remember metrics start from the moment the configuration is created, so only activity *after* Lab 1's apply is counted. Allow 5-10 minutes after a `plan` or `apply` for data to appear.
-3. **CodeBuild / Pipeline widgets** — only populate after Lab 3's pipeline has actually executed at least once. If Lab 3 was never deployed (or the pipeline never ran), these widgets will stay empty.
-4. **`user_id` doesn't match the one you used in Lab 3** — the CodeBuild and Pipeline widgets reference `${var.user_id}-terraform-validate` and similar. A mismatch points them at resources that do not exist. Re-check `terraform.tfvars`.
+3. **CodeBuild widgets** — these read per-project metrics, so they stay empty until Lab 3's pipeline has run at least once. If Lab 3 was never deployed, or the pipeline never got past Source, there is nothing to plot.
+4. **`user_id` doesn't match the one you used in Lab 3** — every CodeBuild widget names its project explicitly, `${var.user_id}-terraform-validate` and similar. A mismatch points them at projects that do not exist. Re-check `terraform.tfvars`.
 5. **Wrong region** — `dashboard.tf` reads `var.primary_region`, so if the `region` in your `terraform.tfvars` doesn't match where Lab 3's pipeline actually ran, every widget points at the wrong region and stays empty.
 
 ### Query returns nothing
@@ -411,7 +414,7 @@ Check the `SOURCE` line is still there and still names `/aws/cloudtrail/advanced
 - [ ] Saved a reusable query
 - [ ] Deployed the CloudWatch dashboard via `terraform apply`
 - [ ] Opened the dashboard URL and identified each widget row
-- [ ] Acknowledged which widgets stay empty until Lab 3's pipeline runs (CodeBuild / Pipeline widgets)
+- [ ] Acknowledged which widgets stay empty until Lab 3's pipeline runs (the CodeBuild widgets)
 
 ---
 

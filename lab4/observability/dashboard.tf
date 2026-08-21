@@ -77,6 +77,15 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         }
       },
 
+      # The three widgets below replace an earlier set built on
+      # AWS/CodePipeline metrics. Those metrics do not exist for this
+      # pipeline: CodePipeline only began publishing CloudWatch metrics in
+      # 2025 and only for V2 pipelines, and even then it publishes just
+      # PipelineDuration and FailedPipelineExecutions - there is no
+      # success metric at any pipeline type. CodeBuild, by contrast,
+      # publishes SucceededBuilds, FailedBuilds, Builds and Duration per
+      # project, and every pipeline stage here IS a CodeBuild project, so
+      # the same questions get answered one level down.
       {
         type   = "metric"
         x      = 0
@@ -85,11 +94,12 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.user_id}-terraform-pipeline"]
+            ["AWS/CodeBuild", "SucceededBuilds", "ProjectName", "${var.user_id}-terraform-apply-staging"],
+            [".", "SucceededBuilds", ".", "${var.user_id}-terraform-apply-prod"]
           ]
           view   = "singleValue"
           region = var.primary_region
-          title  = "Pipeline Successes"
+          title  = "Successful Applies (staging + prod)"
           period = 86400
           stat   = "Sum"
         }
@@ -103,11 +113,15 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionFailed", "PipelineName", "${var.user_id}-terraform-pipeline"]
+            ["AWS/CodeBuild", "FailedBuilds", "ProjectName", "${var.user_id}-terraform-validate"],
+            [".", "FailedBuilds", ".", "${var.user_id}-terraform-plan-staging"],
+            [".", "FailedBuilds", ".", "${var.user_id}-terraform-apply-staging"],
+            [".", "FailedBuilds", ".", "${var.user_id}-terraform-plan-prod"],
+            [".", "FailedBuilds", ".", "${var.user_id}-terraform-apply-prod"]
           ]
           view   = "singleValue"
           region = var.primary_region
-          title  = "Pipeline Failures"
+          title  = "Failed Builds (all stages)"
           period = 86400
           stat   = "Sum"
         }
@@ -121,14 +135,18 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
         height = 4
         properties = {
           metrics = [
-            ["AWS/CodePipeline", "PipelineExecutionSucceeded", "PipelineName", "${var.user_id}-terraform-pipeline", { stat = "Sum" }],
-            [".", "PipelineExecutionFailed", ".", ".", { stat = "Sum" }]
+            ["AWS/CodeBuild", "Builds", "ProjectName", "${var.user_id}-terraform-validate"],
+            [".", "Builds", ".", "${var.user_id}-terraform-plan-staging"],
+            [".", "Builds", ".", "${var.user_id}-terraform-apply-staging"],
+            [".", "Builds", ".", "${var.user_id}-terraform-plan-prod"],
+            [".", "Builds", ".", "${var.user_id}-terraform-apply-prod"]
           ]
           view    = "timeSeries"
           stacked = true
           region  = var.primary_region
-          title   = "Pipeline Executions Over Time"
+          title   = "Build Activity by Stage"
           period  = 3600
+          stat    = "Sum"
         }
       },
 
