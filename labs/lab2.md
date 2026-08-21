@@ -38,13 +38,6 @@ By the end of this lab, you will:
 
 ---
 
-## Cost Reality Check
-
-This lab imports resources that **already exist** from Day 1-2. **No new infrastructure is deployed during the import itself** — Terraform just gains awareness of what's already there. Cost during the lab: $0/hour beyond what Days 1-2 are already running.
-
-If you don't have a Day 1-2 VPC available (or yours was destroyed at end of class), use the `lab2/day1-vpc-lean/` directory in this repo: it's the same Day 1-2 `aws/vpc/` config minus the NAT gateway, costing ~$0/hour to deploy fresh. Import works identically against either version.
-
----
 
 ## Resources to Import (9 total)
 
@@ -63,7 +56,7 @@ If you don't have a Day 1-2 VPC available (or yours was destroyed at end of clas
 The VPC stack imports in dependency order (VPC → subnet → IGW → route table → RT association). The security group must import before its rules (rules reference the SG ID).
 
 **What's intentionally NOT here:**
-- **NAT Gateway** — Day 1-2 deploys it (Lab 3 Task 2) but we exclude it from imports because it's expensive (~$1/day) and not needed for this lab's lesson.
+- **NAT Gateway** — excluded from the import set. It is not needed for this lab's lesson.
 - **S3 state bucket** — already managed by `lab1/state-infra`. See "Why no S3?" in the narrative above.
 - **ALB / ALB SG / ASG / launch template** — Lab 5 territory; not relevant to the import lesson.
 - **`for_each` subnets / private subnets** — Lab 4+ refactor. The 9-resource scope keeps the import addresses clean.
@@ -164,7 +157,7 @@ Lab 2 imports 9 resources that already exist in AWS. Before you can import them,
     terraform plan
     terraform apply
     ```
-    Review the plan, then type `yes` at the apply prompt. The lean stack matches the Day 1-2 resource names exactly but omits the NAT gateway (~$1/day) — so cost is ~$0/hour.
+    Review the plan, then type `yes` at the apply prompt. The lean stack omits the NAT gateway, which nothing in this lab needs.
 
     > **Why local state?** The lean stack uses **local state by design** (no backend block in `providers.tf`) — it's playing the role of "infrastructure that already exists outside your remote state." That's the exact scenario Lab 2 is built around. Don't move it to S3.
 
@@ -636,17 +629,6 @@ Your IAM user needs `s3:ListBucket`, `s3:GetBucketVersioning`, `s3:GetBucketEncr
 
 ---
 
-## Cost Considerations
-
-Importing existing resources costs **$0** — Terraform just reads from AWS and writes to its state file. The underlying resources continue to cost whatever they were already costing.
-
-| Resource | Cost while running |
-|---|---|
-| VPC, subnet, IGW, RT, RT assoc | Free |
-| Security group + 3 rules | Free |
-| **If you deployed the lean VPC fresh in Task 1** | $0/hour (no NAT GW, no EC2) |
-
----
 
 ## Further Reading: bulk import tooling
 

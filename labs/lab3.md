@@ -243,7 +243,7 @@ By the end of this lab, you will:
     | `modules/app/outputs.tf` | Module outputs: `public_ip`, `instance_id`, `vpc_id`, `api_url` (null for this module — populated by the bonus serverless module instead). |
     | `modules/app-serverless/` | **Bonus** — Lambda + API Gateway HTTP API. Drop-in replacement for `modules/app/` with the same interface. Used only if you do Task 8. |
 
-    > **Why VPC + EC2 (and not just SSM parameters)?** A pipeline lab is most convincing when students can see real infrastructure come up. The deployed stack mirrors what Days 1-2 built — same `aws_vpc` / `aws_subnet` / `aws_security_group` / `aws_instance` shape — so the skills carry over directly. Apache writes a tiny `index.html` tagged with the environment and user ID, and the verification step is a `curl` against the public IP. ~$0.01/hr per instance — trivial for a 4-hour class.
+    > **Why VPC + EC2 (and not just SSM parameters)?** A pipeline lab is most convincing when students can see real infrastructure come up. The deployed stack mirrors what Days 1-2 built — same `aws_vpc` / `aws_subnet` / `aws_security_group` / `aws_instance` shape — so the skills carry over directly. Apache writes a tiny `index.html` tagged with the environment and user ID, and the verification step is a `curl` against the public IP.
 
 12. **Review the directory layout you just copied in**
 
@@ -437,8 +437,6 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
         --description "Lab 3 demo credential — delete at end of lab" \
         --secret-string "demo-password-do-not-reuse"
     ```
-    > **Cost note.** Secrets Manager charges $0.40/secret/month plus $0.05 per 10,000 API calls. For a lab account with 25 students × 1 secret = $10/month if forgotten — destroy at end of lab (Cleanup task).
-
 23. **Update the plan-staging buildspec to pull both values**
 
     > **Why the *plan* stage, not the apply stage?** The apply stage runs `terraform apply tfplan` against a **saved plan file**, and Terraform refuses to accept variables alongside a saved plan (`Error: Can't set variables when applying a saved plan file`) — a saved plan already contains the variable values that were set when it was created. So the secrets have to be resolved at **plan** time and baked into `tfplan`. This also means the values the approver reviews are the values that get applied.
@@ -759,7 +757,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 37. **Delete the Task 5 secret and parameter**
 
-    These were created by CLI, not Terraform, so `terraform destroy` does not remove them. Secrets Manager bills $0.40/secret/month until the deletion window closes.
+    These were created by CLI, not Terraform, so `terraform destroy` does not remove them.
 
     ```bash
     # $STUDENT was exported in Step 21
@@ -869,20 +867,6 @@ Filter by tag: `User = userXX` in the AWS console.
 
 ---
 
-## Cost Considerations
-
-| Resource | Cost | Duration |
-|----------|------|----------|
-| EC2 (t3.micro) x 2 | ~$0.02/hour | Lab duration |
-| VPC, Subnet, IGW | Free | - |
-| CodePipeline | $1/month | Prorated |
-| CodeBuild | ~$0.005/minute | ~10 min total |
-
-**Total estimated cost:** < $0.10 for the lab
-
-**Important:** Destroy resources at the end to avoid ongoing charges.
-
----
 
 ## End of Day: Complete Cleanup
 

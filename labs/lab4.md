@@ -452,15 +452,6 @@ cd ~/Advanced_Terraform/lab1/state-infra && terraform destroy
 ```
 ---
 
-## Cost Considerations
-
-| Resource | Cost |
-|---|---|
-| CloudWatch Dashboard | $3/month per dashboard (3 free per account) |
-| CloudTrail management events | Free for the first copy delivered to Event history |
-| Logs Insights queries | $0.005 per GB scanned |
-
----
 
 ## Appendix A — Why the S3 widgets cannot separate lock activity
 
