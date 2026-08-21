@@ -39,7 +39,7 @@ resource "aws_iam_role" "lambda_exec" {
   })
 
   tags = {
-    Student     = var.user_id
+    User        = var.user_id
     Environment = var.environment
   }
 }
@@ -54,7 +54,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   retention_in_days = 7
 
   tags = {
-    Student     = var.user_id
+    User        = var.user_id
     Environment = var.environment
   }
 }
@@ -78,7 +78,7 @@ resource "aws_lambda_function" "greeter" {
 
   tags = {
     Name        = "${var.user_id}-${var.environment}-greeter"
-    Student     = var.user_id
+    User        = var.user_id
     Environment = var.environment
   }
 }
@@ -88,7 +88,7 @@ resource "aws_apigatewayv2_api" "main" {
   protocol_type = "HTTP"
 
   tags = {
-    Student     = var.user_id
+    User        = var.user_id
     Environment = var.environment
   }
 }
@@ -112,7 +112,7 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 
   tags = {
-    Student     = var.user_id
+    User        = var.user_id
     Environment = var.environment
   }
 }

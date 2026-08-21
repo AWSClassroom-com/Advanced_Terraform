@@ -29,8 +29,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student = var.user_id
-      Lab     = "Lab 1 - directories"
+      User = var.user_id
+      Lab  = "Lab 1 - directories"
     }
   }
 }

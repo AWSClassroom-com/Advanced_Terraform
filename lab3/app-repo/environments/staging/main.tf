@@ -28,7 +28,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student     = var.user_id
+      User        = var.user_id
       Environment = "staging"
       ManagedBy   = "Terraform-Pipeline"
     }

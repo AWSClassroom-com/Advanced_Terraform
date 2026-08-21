@@ -282,7 +282,7 @@ By the end of this lab, you will:
 
     Things to notice:
 
-    - **`environments/staging/main.tf`** declares the `backend "s3"` block (state lands in your Lab 1 bucket at key `pipeline/staging/terraform.tfstate`), pins the AWS provider region to **us-east-2** (staging region), attaches `default_tags` including `Student = "userXX"`, calls `module "app"` with `environment = "staging"`, and re-exposes the module outputs (`public_ip`, `instance_id`, `vpc_id`, `api_url`) so `terraform output public_ip` works from the wrapper.
+    - **`environments/staging/main.tf`** declares the `backend "s3"` block (state lands in your Lab 1 bucket at key `pipeline/staging/terraform.tfstate`), pins the AWS provider region to **us-east-2** (staging region), attaches `default_tags` including `User = "userXX"`, calls `module "app"` with `environment = "staging"`, and re-exposes the module outputs (`public_ip`, `instance_id`, `vpc_id`, `api_url`) so `terraform output public_ip` works from the wrapper.
     - **`environments/prod/main.tf`** is the same shape — different state key (`pipeline/prod/terraform.tfstate`), different provider region (**us-west-2**), `environment = "prod"`.
     - **`modules/app/main.tf`** deploys 7 resources per environment: `aws_vpc` (10.10.0.0/16 for staging, 10.20.0.0/16 for prod — avoids Day 1-2's 192.168.0.0/20), `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association`, `aws_security_group` (HTTP-only), and `aws_instance` (t3.micro running Apache). The `user_data` writes a tiny env-tagged `index.html` so `curl http://<public_ip>` returns proof the right environment deployed.
 
@@ -299,7 +299,7 @@ By the end of this lab, you will:
 
     - The `backend "s3"` block declares only `key`, `encrypt`, and `use_lockfile`. The bucket and its region arrive at `terraform init` time, injected by the pipeline.
     - `provider "aws"` reads `var.staging_region`, which defaults to `us-east-1`.
-    - `module "app"` and the `Student` tag both read `var.user_id`, which the pipeline supplies as `TF_VAR_user_id` from the `user_id` you set in Step 5.
+    - `module "app"` and the `User` tag both read `var.user_id`, which the pipeline supplies as `TF_VAR_user_id` from the `user_id` you set in Step 5.
 
     > **Why this matters.** A value that has to be pasted into several files is a value that gets pasted wrong in one of them. The pipeline already knows your ID, your bucket, and its region — so it passes them in, and these files stay identical for every student in the room.
 
@@ -389,7 +389,7 @@ By the end of this lab, you will:
     ```html
     <h1>Sample Web App</h1>
     <p>Environment: staging</p>
-    <p>Student: userXX</p>
+    <p>User: userXX</p>
     <p>Deployed via CI/CD Pipeline</p>
     ```
 
@@ -620,7 +620,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```html
     <h1>Sample Web App</h1>
     <p>Environment: prod</p>
-    <p>Student: userXX</p>
+    <p>User: userXX</p>
     <p>Deployed via CI/CD Pipeline</p>
     ```
 
@@ -635,15 +635,15 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     **Staging (us-east-2):**
 
     1. Switch to us-east-2 region
-    2. EC2 → Instances → Filter by tag: `Student = userXX`
-    3. VPC → Your VPCs → Filter by tag: `Student = userXX`
+    2. EC2 → Instances → Filter by tag: `User = userXX`
+    3. VPC → Your VPCs → Filter by tag: `User = userXX`
 
     **Production (us-west-2):**
 
     1. Switch to us-west-2 region
     2. Repeat the same checks
 
-    **All resources should be tagged with your IAM username** for easy identification in the shared account.
+    **All resources should be tagged with your AWS login ID** for easy identification in the shared account.
 
 ---
 
@@ -698,7 +698,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```html
     <h1>Sample Web App (Serverless)</h1>
     <p>Environment: staging</p>
-    <p>Student: userXX</p>
+    <p>User: userXX</p>
     <p>Deployed via Lambda + API Gateway HTTP API</p>
     ```
 
@@ -738,13 +738,13 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```bash
     # EC2 instances tagged with your user ID — should return empty after destroy.
     aws ec2 describe-instances \
-        --filters "Name=tag:Student,Values=userXX" "Name=instance-state-name,Values=running" \
+        --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
         --query 'Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0]]' \
         --output table \
         --region us-east-2
 
     aws ec2 describe-instances \
-        --filters "Name=tag:Student,Values=userXX" "Name=instance-state-name,Values=running" \
+        --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
         --query 'Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0]]' \
         --output table \
         --region us-west-2
@@ -788,7 +788,7 @@ You have successfully:
 | **Golden Rule** | Plan saved as artifact, apply uses saved plan |
 | **Multi-region deployment** | Same code deployed to us-east-2 and us-west-2 |
 | **Approval gates** | Manual review before each environment |
-| **Student isolation** | All resources tagged with your IAM username |
+| **Student isolation** | All resources tagged with your AWS login ID |
 | **Full lifecycle** | Create → verify → destroy through pipeline |
 
 ### Connection to Chapters
@@ -842,7 +842,7 @@ Check CodeBuild logs for the specific permission needed. The IAM role may need a
 
 ### Can't Find Your Resources
 
-Filter by tag: `Student = userXX` in the AWS console.
+Filter by tag: `User = userXX` in the AWS console.
 
 ### EC2 Instance Not Accessible
 
@@ -903,13 +903,13 @@ terraform destroy -auto-approve
 
 # 4. Verify no running instances
 aws ec2 describe-instances \
-    --filters "Name=tag:Student,Values=userXX" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
     --query 'Reservations[*].Instances[*].InstanceId' \
     --output text \
     --region us-east-2
 
 aws ec2 describe-instances \
-    --filters "Name=tag:Student,Values=userXX" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
     --query 'Reservations[*].Instances[*].InstanceId' \
     --output text \
     --region us-west-2

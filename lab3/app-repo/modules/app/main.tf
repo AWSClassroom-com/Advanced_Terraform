@@ -46,7 +46,7 @@ resource "aws_vpc" "main" {
   tags = {
     Name        = "${var.user_id}-${var.environment}-vpc"
     Environment = var.environment
-    Student     = var.user_id
+    User        = var.user_id
     ManagedBy   = "terraform-pipeline"
   }
 }
@@ -58,8 +58,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name    = "${var.user_id}-${var.environment}-public-subnet"
-    Student = var.user_id
+    Name = "${var.user_id}-${var.environment}-public-subnet"
+    User = var.user_id
   }
 }
 
@@ -67,8 +67,8 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name    = "${var.user_id}-${var.environment}-igw"
-    Student = var.user_id
+    Name = "${var.user_id}-${var.environment}-igw"
+    User = var.user_id
   }
 }
 
@@ -81,8 +81,8 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name    = "${var.user_id}-${var.environment}-public-rt"
-    Student = var.user_id
+    Name = "${var.user_id}-${var.environment}-public-rt"
+    User = var.user_id
   }
 }
 
@@ -113,8 +113,8 @@ resource "aws_security_group" "web" {
   }
 
   tags = {
-    Name    = "${var.user_id}-${var.environment}-web-sg"
-    Student = var.user_id
+    Name = "${var.user_id}-${var.environment}-web-sg"
+    User = var.user_id
   }
 }
 
@@ -133,7 +133,7 @@ resource "aws_instance" "web" {
     cat > /var/www/html/index.html <<HTML
     <h1>Sample Web App</h1>
     <p>Environment: ${var.environment}</p>
-    <p>Student: ${var.user_id}</p>
+    <p>User: ${var.user_id}</p>
     <p>Deployed via CI/CD Pipeline</p>
     HTML
   EOF
@@ -141,7 +141,7 @@ resource "aws_instance" "web" {
   tags = {
     Name        = "${var.user_id}-${var.environment}-web"
     Environment = var.environment
-    Student     = var.user_id
+    User        = var.user_id
     ManagedBy   = "terraform-pipeline"
   }
 }

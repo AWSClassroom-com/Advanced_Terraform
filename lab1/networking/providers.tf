@@ -33,7 +33,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student   = var.user_id
+      User      = var.user_id
       Course    = "Terraform Day 3"
       Lab       = "Lab 1 - Networking"
       ManagedBy = "terraform"

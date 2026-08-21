@@ -52,7 +52,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Student     = var.user_id
+      User        = var.user_id
       Project     = "terraform-state-infra"
       Environment = "management"
       ManagedBy   = "Terraform"
