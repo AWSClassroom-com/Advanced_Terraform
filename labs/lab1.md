@@ -667,6 +667,50 @@ Optional — skip if you're short on time. This task gives you a concrete look a
 
 ---
 
+## Challenge: Extend the Cross-State Contract (optional, ~10 min)
+
+Everything this needs is already deployed. It is optional — if you are short on time, go straight
+to Task 6 and clean up.
+
+The `app-config` parameter you created in Task 4 records the environment, VPC, subnet, and
+security group. It does not record the VPC's CIDR block — even though the networking team already
+publishes it.
+
+**Part 1 — consume an output that already exists.**
+
+`lab1/networking/outputs.tf` declares a `vpc_cidr` output. Nothing reads it. Wire it through so
+the app config carries the CIDR too.
+
+**Success condition:** the parameter's value contains the CIDR block.
+
+```bash
+aws ssm get-parameter --name "/<your user_id>/dev/app-config" \
+    --query 'Parameter.Value' --output text
+```
+
+Two things to work out for yourself:
+
+- Where the value has to be read. The three values already in the config are read the same way.
+- Why your first `terraform apply` reports **no change** to the parameter, and what to do about
+  it. The answer is in the resource's own `lifecycle` block.
+
+**Part 2 — change the contract (stretch).**
+
+Publish something the networking team does not currently expose — the public subnet's CIDR — and
+consume that as well. This one is a two-sided change: declare the output, apply `lab1/networking`,
+then read it from the application state.
+
+> **If you get stuck:** `main.tf` in `lab1/state-infra` shows the pattern exactly — a `local` that
+> reads `data.terraform_remote_state.networking[0].outputs.<name>`, and a matching line in the
+> `jsonencode` block. `lab1/networking/outputs.tf` shows how an output is declared.
+
+> **Why this is the whole chapter in one exercise.** `terraform_remote_state` reads a state file's
+> **outputs**, not its resources. An output is the interface between two states, and Part 2 is what
+> changing that interface actually costs: the producing state has to be applied before the
+> consuming state can see the new value.
+
+---
+
 ## Task 6: Cleanup (5 min)
 
 The state bucket you created in Step 11 is a **bootstrap resource** — it holds the state file for this very configuration. Terraform can't destroy a bucket that's actively storing its own state (the state file would vanish mid-operation). The standard pattern in real orgs: treat the bootstrap state bucket as **manually managed and never deleted** — it's the durable record of every environment's history, and once a team adopts it, removing it would orphan every state file pointing at it. The steps below follow that pattern: drop the bucket from terraform's view, destroy everything else, and **leave the bucket in place**.
@@ -782,6 +826,7 @@ Use with caution -- only when certain no operation is running.
 - [ ] Verified the cross-state dependency by matching VPC IDs
 - [ ] Read the raw state file with `state pull` and `jq`
 - [ ] Cleaned up, leaving the state bucket in place for Labs 2-4
+- [ ] *(optional)* Extended the cross-state contract with the VPC CIDR
 
 
 ## Next Steps
