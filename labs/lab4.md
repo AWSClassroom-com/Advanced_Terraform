@@ -270,13 +270,13 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     ```
     That is the shape every widget follows: a `type`, a position on the 24-column grid (`x`, `y`, `width`, `height`), and a `properties` block naming the metrics to plot.
 
-    The dashboard provisions a single `aws_cloudwatch_dashboard` resource named `${account}-terraform-operations`. Its widgets monitor:
+    The dashboard provisions a single `aws_cloudwatch_dashboard` resource named `${var.user_id}-terraform-operations`. Its widgets monitor:
 
     | Widget | Metric source | What it shows |
     |--------|---------------|---------------|
     | CodeBuild Duration | `AWS/CodeBuild` namespace, `Duration` metric | Build execution time across the 5 pipeline projects |
     | Build Success vs. Failure | `AWS/CodeBuild`, `SucceededBuilds` + `FailedBuilds` | Apply-stage outcomes for staging and prod |
-    | Pipeline Execution Counters | `AWS/CodePipeline`, `PipelineExecutionSucceeded` + `PipelineExecutionFailed` | Cumulative pass/fail for `${account}-terraform-pipeline` |
+    | Pipeline Execution Counters | `AWS/CodePipeline`, `PipelineExecutionSucceeded` + `PipelineExecutionFailed` | Cumulative pass/fail for `${var.user_id}-terraform-pipeline` |
     | Pipeline Execution Time Series | Same metrics, stacked area | Trend over time |
     | State Bucket Operations | `AWS/S3`, `GetRequests` + `PutRequests` on `var.state_bucket_name` | Reads (plans) vs. writes (applies) on the state bucket |
     | State Bucket PutRequests | `AWS/S3`, `PutRequests` on `var.state_bucket_name` with FilterId `EntireBucket` | State writes, including the `.tflock` lock and unlock |
