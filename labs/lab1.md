@@ -6,19 +6,19 @@
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
 | **Chapter** | Enterprise Workspaces & Cross-Environment Dependencies |
-| **Duration** | 60 minutes |
+| **Duration** | 90 minutes |
 | **Difficulty** | Advanced |
-| **Version** | 4.2 |
-| **Prerequisites** | Workspace concepts from Day 2 Chapter 7 (lecture); Terraform CLI installed. Days 1-2 hands-on labs are **not** required — this lab creates its own S3 state bucket. |
+| **Version** | 5.0 |
+| **Prerequisites** | Workspace concepts from Day 2 Chapter 7 (lecture). No prior lab work is needed — you build your own VM in Task 1 and this lab creates its own S3 state bucket. |
 | **Terraform** | >= 1.10.0 |
-| **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab1/state-infra/`, `lab1/networking/`, `lab1/directories/` |
+| **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab1/state-infra/`, `lab1/networking/` (`lab1/directories/` is reference material for the directory-per-environment pattern covered in the lecture) |
 ---
 
 ## Lab Overview
 
 ### Narrative
 
-After completing Days 1 and 2, every Terraform project in your organization can use remote state in S3 with encryption, versioning, and native locking. The team can migrate state and refactor configurations using `moved` blocks.
+Your organization already runs Terraform: remote state in S3 with encryption, versioning, and native locking, and configurations refactored with `moved` blocks.
 
 Now your platform team faces a strategic challenge: **how should you organize state across 40 microservices and 3 environments?**
 
@@ -28,17 +28,18 @@ Three teams have different approaches:
 - **Checkout team** — uses workspaces for everything. Elegant single config, but had a near-miss when an engineer applied to prod thinking they were in dev.
 - **Networking team** — maintains a shared VPC that every other team needs to reference. How do other teams get the VPC ID without hardcoding it everywhere?
 
-Your task: Learn Terraform workspaces, implement workspace safety guards, configure cross-state dependencies using `terraform_remote_state`, and develop a decision framework for when to use workspaces versus directories.
+Your task: build your workstation, learn Terraform workspaces, implement workspace safety guards, and configure cross-state dependencies using `terraform_remote_state`.
 
 ### Learning Objectives
 
 By the end of this lab, you will be able to:
 
+- **Build the EC2 workstation** you will use for the rest of the course
+
 - **Use Terraform workspaces** to manage multiple environments from a single configuration
 - **Implement workspace safety guards** using preconditions to prevent accidental production applies
 - **Configure cross-state dependencies** using `terraform_remote_state` to read outputs from another state file
-- **Compare workspaces vs. directory structure** through hands-on experience with both patterns
-- **Design state boundaries** based on team ownership and change frequency
+- **Read a state file directly** with `terraform state pull` and `jq`
 
 ---
 
@@ -59,18 +60,85 @@ By the end of this lab, you will be able to:
 
 ---
 
-## Task 1: Workspace Fundamentals — Hands-On Practice (15 min)
+## Task 1: Build Your Lab Environment (30 min)
 
-In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's put that knowledge into practice before implementing advanced patterns.
+You will run every Terraform command in this course from a small EC2 instance rather than from
+your own machine. Building it yourself takes a few minutes and means nothing in this course
+appears by magic.
 
-1. **Clone the Lab Repository**
+1. **Launch the deployment VM**
+
+    1. Open the [AWS Management Console](https://console.aws.amazon.com/) and sign in with the account, username, and password your instructor gave you.
+    2. Select your assigned region in the top-right region picker. Every resource you create today goes in that region unless a step says otherwise.
+    3. Search for **EC2** in the top search bar and open the service.
+    4. Click **Launch instance**.
+    5. In **Name**, enter `deploy-userXX`, substituting your own assigned ID.
+    6. Leave the image as the default **Amazon Linux 2023**.
+    7. Set **Instance type** to **t3.small**.
+    8. Under **Key pair (login)**, select **Proceed without a key pair**.
+    9. In **Network settings**, click **Edit**, then create a new security group named `userXX-Allow SSH`. Use the same string for the description. Leave the rule allowing SSH on port 22.
+    10. Under **Configure storage**, set the root volume to **20 GiB**.
+    11. Expand **Advanced details** and set **IAM instance profile** to `Terraform-InstanceRole`.
+    12. Click **Launch instance**.
+
+    > **Why an instance profile instead of access keys?** The role is attached to the machine, so
+    > the AWS CLI and Terraform pick up credentials automatically and there is no key to leak or
+    > rotate. It also changes what CloudTrail records about you, which is the subject of Lab 4.
+
+2. **Connect to the VM**
+
+    1. Click **Instances**, then select the checkbox next to your instance.
+    2. Click **Connect**, stay on the **EC2 Instance Connect** tab, and click **Connect**.
+
+    A terminal opens in a new browser tab. Everything from here to the end of the course happens
+    in that terminal unless a step says otherwise.
+
+3. **Configure the AWS CLI**
+
+    ```bash
+    aws configure
+    ```
+    Press **ENTER** at both **AWS Access Key ID** and **AWS Secret Access Key** to leave them
+    blank — the instance profile supplies credentials. Enter your assigned region, then `json`
+    for the output format.
+
+    Confirm the CLI can reach AWS:
+
+    ```bash
+    aws sts get-caller-identity
+    ```
+    **Expected:**
+    ```
+    "Arn": "arn:aws:sts::<account>:assumed-role/Terraform-InstanceRole/i-0abc123..."
+    ```
+    Notice the ARN names the **role** and the instance, not you. Lab 4 returns to that.
+
+4. **Install Terraform**
+
+    ```bash
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+    sudo yum -y install terraform
+    terraform -v
+    ```
+    **Expected:** a version line. Anything 1.10 or newer works for this course.
+
+5. **Clone the lab repository**
 
     ```bash
     cd ~
     git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
     cd Advanced_Terraform/lab1/state-infra
     ```
-2. **Review the Backend Configuration (do not edit yet)**
+
+---
+
+## Task 2: Workspace Fundamentals (12 min)
+
+In Day 2 Chapter 7 you saw Terraform workspaces in lecture. Here you use them.
+
+
+6. **Review the Backend Configuration (do not edit yet)**
 
     Open `providers.tf` and read the backend block. **It's commented out on purpose** — the lab is self-contained:
 
@@ -78,11 +146,9 @@ In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's
     terraform {
       required_version = ">= 1.10.0"
 
-      # PART B: Remote state backend (uncomment AFTER Part A creates the bucket)
+      # Remote state backend - uncomment in Step 12, once the bucket exists.
       # backend "s3" {
-      #   bucket       = "<your-state-bucket-from-terraform-output>"
       #   key          = "lab1-app/terraform.tfstate"
-      #   region       = "<your-assigned-region>"   # e.g. us-east-2
       #   encrypt      = true
       #   use_lockfile = true   # S3 native locking (Terraform 1.10+)
       # }
@@ -96,91 +162,56 @@ In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's
     }
     ```
 
-    **Why commented out?** This `lab1/state-infra` directory *creates* the state bucket (`main.tf` defines an `aws_s3_bucket`). You can't point a backend at a bucket that doesn't exist yet — that's the classic chicken-and-egg. So Part A runs with **local state** to create the bucket, captures the bucket name from the output, then optionally migrates to remote in Part B.
+    **Why commented out?** This directory *creates* the state bucket, and you cannot point a backend at a bucket that does not exist yet. So this configuration starts on **local state**, creates the bucket, and migrates to the bucket afterwards in Step 12.
 
-    **You do not need a bucket from Day 1-2.** Whether you completed Days 1-2 or skipped straight to Day 3, this lab will create its own bucket. If you already have a Day 1-2 bucket, that's fine — it'll continue to exist independently of the one this lab creates.
-
-    > **About `use_lockfile = true`:** Day 3 uses Terraform 1.10+'s native S3 state locking. No DynamoDB table required. Whatever bucket you end up using just needs `object_lock_enabled = true` (the bucket this lab creates already has that).
+    > **About `use_lockfile = true`:** Terraform 1.10+ locks state using S3 itself, so there is no DynamoDB table anywhere in this course. It works by conditionally creating a `.tflock` object next to the state file — S3 refuses the write if one already exists, and that refusal *is* the lock. The bucket needs no special configuration for this.
     >
     > **Production note:** In production, you'd add a bucket policy with least-privilege IAM (`s3:GetObject`, `s3:PutObject`, `s3:ListBucket` on specific paths). For this lab, we rely on your existing classroom permissions.
 
-3. **Initialize Terraform**
+7. **Initialize Terraform**
 
     ```bash
     terraform init
     ```
-4. **Explore the Default Workspace**
+8. **Create the environment workspaces**
 
-    Every Terraform configuration starts with a `default` workspace:
+    Every configuration starts in a workspace called `default`. List what exists, then create the
+    three you need:
 
     ```bash
-
-    # List all workspaces (asterisk marks current)
     terraform workspace list
-    ```
-    **Expected output:**
-    ```
-    * default
-    ```
-
-5. **See How Workspaces Affect State Paths**
-
-    Once a remote S3 backend is configured (you'll switch to one in Step 12), each workspace writes to its own key under the bucket:
-
-    - `default` workspace → `lab1-app/terraform.tfstate`
-    - `dev` workspace → `env:/dev/lab1-app/terraform.tfstate`
-    - `prod` workspace → `env:/prod/lab1-app/terraform.tfstate`
-
-    The `env:/<workspace>/` prefix is what keeps state files separated per workspace. Right now you're on **local state** (the backend block in `providers.tf` is commented out), so workspace state files are sitting under `terraform.tfstate.d/<workspace>/` on your local disk instead. Same conceptual layout, different storage.
-
-6. **Create Environment Workspaces**
-
-    ```bash
-
-    # Create dev workspace
     terraform workspace new dev
-
-    # Verify you're now in dev
-    terraform workspace list
-    ```
-    **Expected output:**
-    ```
-      default
-    * dev
-    ```
-
-    ```bash
-    # Create staging and prod workspaces
     terraform workspace new staging
     terraform workspace new prod
-
-    # List all workspaces
     terraform workspace list
     ```
-    **Expected output:**
+    **Expected:**
     ```
       default
       dev
     * prod
       staging
     ```
+    The asterisk marks the workspace you are in. `workspace new` switches you to the one it just
+    created, which is why you end up in `prod`.
 
-7. **Switch Between Workspaces**
+9. **Switch workspaces and confirm the state is separate**
 
     ```bash
-
-    # Switch to dev
     terraform workspace select dev
-
-    # Verify
     terraform workspace show
-    ```
-    **Expected output:**
-    ```
-    dev
-    ```
+    terraform state list
 
-8. **Use terraform.workspace in Configuration**
+    terraform workspace select staging
+    terraform state list
+    ```
+    **Expected:** `dev` from `workspace show`, and no output from either `state list`. Nothing is
+    deployed yet, and each workspace reads a different state file.
+
+    > **Production note:** Workspaces isolate *state*, not *credentials*. The same AWS IAM permissions apply regardless of which workspace you're in. In production environments, teams often use separate AWS accounts per environment (dev/staging/prod) with IAM role assumption, so that workspace selection alone cannot accidentally modify production resources.
+
+
+10. **Use terraform.workspace in Configuration**
 
     Open `variables.tf` and examine how workspace affects configuration:
 
@@ -212,124 +243,85 @@ In Day 2 Chapter 7, you learned about Terraform workspaces in lecture. Now let's
 
     **Key insight:** `terraform.workspace` returns `"dev"`, `"staging"`, or `"prod"` depending on which workspace is active. This lets one configuration serve multiple environments.
 
-9. **Verify State Isolation**
-
-    ```bash
-
-    # In dev workspace, check state
-    terraform workspace select dev
-    terraform state list
-    # (empty - nothing deployed yet)
-
-    # Switch to staging
-    terraform workspace select staging
-    terraform state list
-    # (also empty - separate state file)
-    ```
-    Each workspace has its own state. Resources in `dev` don't appear in `staging`.
-
-    > **Production note:** Workspaces isolate *state*, not *credentials*. The same AWS IAM permissions apply regardless of which workspace you're in. In production environments, teams often use separate AWS accounts per environment (dev/staging/prod) with IAM role assumption, so that workspace selection alone cannot accidentally modify production resources.
-
-10. **Delete a Workspace (Cleanup)**
-
-    ```bash
-
-    # Can't delete current workspace - switch first
-    terraform workspace select dev
-
-    # Delete prod (for now - we'll recreate it)
-    terraform workspace delete prod
-    ```
-    **Note:** You can only delete empty workspaces (no resources in state).
-
----
-
-## Task 2: Workspace Safety Guards (15 min)
+## Task 3: Workspace Safety Guards (15 min)
 
 The checkout team's near-miss happened because a junior engineer thought they were in `dev` but were actually in `prod`. You'll implement safety guards to prevent this.
 
-11. **Recreate the Prod Workspace**
+11. **Configure your variables and create the state bucket**
 
     ```bash
-    terraform workspace new prod
     terraform workspace select dev
-    ```
-12. **Configure Your Variables**
-
-    ```bash
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Open `terraform.tfvars` and set `user_id` to your assigned AWS login ID. Use a **concrete** value like `user07` — the `user_id` variable enforces the regex `^user[0-9]{2}$`, so the literal placeholder `userXX` will fail at plan time:
+    Open `terraform.tfvars` and set `user_id` to your assigned AWS login ID. Use a **concrete**
+    value like `user07`; `user_id` is validated against `^user[0-9]{2}$`, so the literal
+    placeholder `userXX` fails at plan time:
 
     ```hcl
-    user_id = "user07"  # ← REPLACE 07 with YOUR assigned user number. Must match ^user[0-9]{2}$
-    user_id    = "user07"  # ← Same value as user_id (used as a prefix for Part D's app-config SSM parameter)
+    user_id = "user07"  # ← REPLACE 07 with YOUR assigned user number
     ```
 
-    Leave `region` and `state_bucket_name` commented out for now. You'll uncomment `state_bucket_name` after Part C completes.
-
-    **Apply to create the state bucket** (this is the bucket every other piece of Day 3 will use):
+    Leave `primary_region`, `bucket_region`, and `state_bucket_name` commented out. You will set
+    `state_bucket_name` in Step 18.
 
     ```bash
     terraform plan
     terraform apply
     ```
-    Review the plan, then type `yes` at the apply prompt. The apply creates an `aws_s3_bucket` named `<user_id>-terraform-state-<random6>` (the random suffix guarantees the name is globally unique — no two students can collide).
+    Review the plan, then type `yes` at the apply prompt. The apply creates an `aws_s3_bucket`
+    named `<user_id>-terraform-state-<random6>`; the random suffix guarantees the name is
+    globally unique, so no two students can collide.
 
     > **Notice `aws_s3_bucket_metric` in the plan.** S3 reports storage metrics for free, but request metrics such as `GetRequests` and `PutRequests` are opt-in: nothing records them until a metrics configuration asks for them. Turning it on here means every `terraform plan` and `apply` you run for the rest of the day leaves a measurable trace on this bucket, which is what Lab 4's dashboard reads. It is worth seeing the order of events: you have to decide to collect the data **before** the activity happens. Auditing is not something you can switch on afterwards and backfill.
 
-    **Capture the bucket name** — you'll paste it into `lab1/networking`'s backend in Step 17, and into your own `terraform.tfvars` in Step 19:
+    **Capture the bucket name.** You need it in Steps 12, 16, and 18:
 
     ```bash
     terraform output state_bucket_name
     ```
-    Expected output (yours will have a different random suffix):
+    **Expected** (your suffix will differ):
 
     ```
     state_bucket_name = "user07-terraform-state-x8k2m4"
     ```
 
-    **Write this value down.** Every reference to "your state bucket" later in the lab means this exact value.
+    Write this value down. Every later reference to "your state bucket" means this exact string.
 
-    **Migrate this state to the new remote backend.** Up to now everything has been on local state (because the backend block in `providers.tf` was commented out — the bucket didn't exist yet). The bucket now exists, so we can flip on the remote backend.
+12. **Migrate the state into the bucket**
 
-    Open `providers.tf` and **uncomment** the backend block, then paste in your bucket name and your assigned region:
+    Everything so far has been on local state, because the backend block in `providers.tf` is
+    commented out — the bucket did not exist yet. It does now.
+
+    Open `providers.tf` and uncomment the backend block. Notice what it does **not** contain:
 
     ```hcl
-    terraform {
-      required_version = ">= 1.10.0"
-
-      backend "s3" {
-        bucket       = "<paste-the-state_bucket_name-output-here>"
-        key          = "lab1-app/terraform.tfstate"
-        region       = "<your-assigned-region>"   # e.g. us-east-2
-        encrypt      = true
-        use_lockfile = true
-      }
-
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = "~> 6.0"
-        }
-      }
+    backend "s3" {
+      key          = "lab1-app/terraform.tfstate"
+      encrypt      = true
+      use_lockfile = true
     }
     ```
 
-    Now re-init with the migration flag so Terraform copies your existing local state into the bucket:
+    > **Where are `bucket` and `region`?** A backend block cannot read variables — Terraform has
+    > to initialize the backend before it can evaluate anything. So both values are passed at
+    > init time instead. You used the same `-backend-config` pattern in Day 1-2 when you migrated
+    > state to your first bucket.
 
     ```bash
     terraform init -migrate-state \
-        -backend-config="bucket=<paste-your-state_bucket_name>" \
-        -backend-config="region=<your-bucket-region>"
+        -backend-config="bucket=<your state bucket>" \
+        -backend-config="region=<your bucket region>"
     ```
-    When prompted *"Do you want to copy existing state to the new backend?"*, type `yes`. Terraform pushes your current workspace's state file up to S3 at `env:/<workspace>/lab1-app/terraform.tfstate`. Verify:
+    When prompted *"Do you want to copy existing state to the new backend?"*, type `yes`.
 
     ```bash
     aws s3 ls "s3://$(terraform output -raw state_bucket_name)/" --recursive
     ```
-    You should see a key under `env:/<your-current-workspace>/lab1-app/`. Other workspaces (`staging`, `prod`, etc.) will get their own `env:/<workspace>/` prefix the first time you `terraform apply` while sitting in them — workspaces don't get a remote state file until they actually have state to write.
+    **Expected:** one key under `env:/dev/lab1-app/`. Non-default workspaces get an
+    `env:/<workspace>/` prefix, and that prefix is what keeps their state files apart. The other
+    workspaces get theirs the first time you apply while sitting in them.
+
 
 13. **Review the Workspace Safety Guard**
 
@@ -392,9 +384,9 @@ The checkout team's near-miss happened because a junior engineer thought they we
     - Second precondition allows only `dev`, `staging`, `prod`, or `feature-*` workspaces
     - Production workspace triggers a warning output
 
-14. **Test the Workspace Guard**
+14. **Test the workspace guard**
 
-    Switch to default and try to plan:
+    Switch to `default` and plan:
 
     ```bash
     terraform workspace select default
@@ -411,17 +403,18 @@ The checkout team's near-miss happened because a junior engineer thought they we
     Allowed workspaces: dev, staging, prod
     Or use a feature branch workspace: feature-*
     ```
-    The guard **prevented** an accidental apply to an unconfigured workspace. (Both preconditions in `workspace_guard.tf` fail for the `default` workspace; Terraform surfaces the "Workspace 'X' is not allowed" message because the second precondition's error_message is the more general one.)
-
-15. **Use a Valid Workspace**
+    Both preconditions fail for `default`; Terraform surfaces the second one because its message
+    is the more general of the two. Now switch back and plan again:
 
     ```bash
     terraform workspace select dev
     terraform plan
     ```
-    Now the plan succeeds. The guard allowed `dev` because it's in the allowed list.
+    The plan succeeds, because `dev` is in the allowed list. Nothing was created or modified while
+    the guard was failing.
 
-16. **Test Feature Branch Pattern**
+
+15. **Test Feature Branch Pattern**
 
     ```bash
     terraform workspace new feature-login-fix
@@ -439,11 +432,11 @@ The checkout team's near-miss happened because a junior engineer thought they we
     ```
     ---
 
-## Task 3: Cross-State Dependencies with terraform_remote_state (15 min)
+## Task 4: Cross-State Dependencies with terraform_remote_state (15 min)
 
 The networking team maintains the VPC. Your application team needs the VPC ID and subnet IDs without hardcoding them. You'll use `terraform_remote_state` to create this cross-state dependency.
 
-17. **Deploy the "Networking" State**
+16. **Deploy the "Networking" State**
 
     First, deploy infrastructure that simulates the networking team's state:
 
@@ -451,7 +444,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     cd ~/Advanced_Terraform/lab1/networking
     ```
 
-    Open `providers.tf` and configure your backend. **Paste the bucket name from the `state_bucket_name` output of `lab1/state-infra` (Step 12 of Part A)** — not a Day 1-2 bucket and not a guessed name:
+    Open `providers.tf` and read the backend block. As in Step 12, it names only the key — you supply the bucket and its region at init time. Use the `state_bucket_name` you captured in **Step 11**:
 
     ```hcl
     terraform {
@@ -499,13 +492,13 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
 
     **Record these values** -- you'll verify the remote_state reads them correctly.
 
-18. **Review the Application Configuration**
+17. **Review the Application Configuration**
 
     ```bash
     cd ~/Advanced_Terraform/lab1/state-infra
     ```
 
-    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count`: the whole Part D block stays dormant until `state_bucket_name` is set (you'll set it in Step 19):
+    Open `main.tf` and find the `terraform_remote_state` data source. Note the `count`: the whole block stays dormant until `state_bucket_name` is set, which you do in Step 18:
 
     ```hcl
     data "terraform_remote_state" "networking" {
@@ -529,7 +522,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     }
 
     # Application resource that uses networking outputs. Gated on the cross-state
-    # data source so Part A doesn't try to create this before lab1/networking
+    # data source so this isn't created before lab1/networking
     # has been deployed.
     resource "aws_ssm_parameter" "app_config" {
       count = local.cross_state_enabled ? 1 : 0
@@ -563,27 +556,26 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     > - **Security:** Any team with S3 read access to the networking state can see ALL its outputs. Design outputs carefully -- never expose secrets like database passwords.
     > - **Graceful fallbacks:** For optional dependencies, use the `defaults` argument: `defaults = { vpc_id = null }` to handle missing outputs without failing.
 
-19. **Update Variables for Remote State**
+18. **Update Variables for Remote State**
 
-    Open `terraform.tfvars` and **uncomment** the `state_bucket_name` line (it was commented out when you copied from the example), pasting in the bucket name you captured in Step 18:
+    Open `terraform.tfvars` and **uncomment** the `state_bucket_name` line, pasting in the bucket name you captured in Step 11:
 
     ```hcl
-    user_id        = "userXX"            # already set in Step 12
-    user_id           = "userXX"            # already set in Step 12
+    user_id           = "userXX"                         # already set in Step 11
     state_bucket_name = "userXX-terraform-state-abc123"  # <- uncomment + paste your actual bucket
     ```
 
-    > **Why this matters:** the `terraform_remote_state.networking` data source in `main.tf` is gated on `state_bucket_name` being set — until you fill this in, Part D is dormant and Part A's plan/apply succeed unchanged. Once you set it, Terraform reads the networking outputs from your lab1/networking state and creates the `app_config` SSM parameter.
+    > **Why this matters:** the `terraform_remote_state.networking` data source in `main.tf` is gated on `state_bucket_name` being set — until you fill it in, that block is dormant and every earlier plan and apply succeeded without it. Once you set it, Terraform reads the networking outputs from your `lab1/networking` state and creates the `app_config` SSM parameter.
 
-20. **Deploy the Application**
+19. **Deploy the Application**
 
-    Return to the application directory (state-infra) before deploying — Part D's app config lives there, alongside the bootstrap config from Step 12:
+    Return to `lab1/state-infra` before deploying — the app config lives there, alongside the bucket you created in Step 11:
 
     ```bash
     cd ~/Advanced_Terraform/lab1/state-infra
     terraform plan
     ```
-    (If you get a workspace_guard error here, you switched workspaces during Part B's experiments. Recover and continue.)
+    (If you get a `workspace_guard` error here, you are in the wrong workspace. Select `dev` and try again.)
 
     **Observe the plan:** Notice that `vpc_id`, `subnet_id`, and `security_group_id` are read from the networking state -- not hardcoded.
 
@@ -592,7 +584,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     ```
     Type `yes` when prompted.
 
-21. **Verify Cross-State Dependency**
+20. **Verify Cross-State Dependency**
 
     ```bash
     terraform output
@@ -605,26 +597,11 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
 
     Verify the VPC ID matches what you recorded from the networking deployment.
 
-22. **Understand State Boundaries**
-
-    Why did we separate networking from application state?
-
-    | Factor | Networking | Application |
-    |--------|------------|-------------|
-    | **Change frequency** | Rarely (VPC is stable) | Often (new features, deployments) |
-    | **Team ownership** | Networking team | Application team |
-    | **Blast radius** | High (affects all apps) | Low (only this app) |
-    | **Access required** | Read-only for app teams | Full access for app team |
-
-    **Design principle:** Resources that change together and are owned by the same team belong in the same state. Resources with different lifecycles or owners should be in separate states.
-
----
-
-## Task 4: State Inspection and Troubleshooting (10 min)
+## Task 5: State Inspection and Troubleshooting (8 min)
 
 When something breaks in production, you'll need to read the state file directly. This task practices the operational skills you'll use in real outages — most of which you'll only need once or twice in your career, but having seen the commands once makes the difference between a 10-minute fix and an hour of stress.
 
-23. **Pull the raw state file with `terraform state pull`**
+21. **Pull the raw state file with `terraform state pull`**
 
     > Before you run anything in this task: **confirm you're still in `lab1/state-infra/` and on the `dev` workspace.** If you're not sure, check (you've done this several times already). If you're not, fix it before continuing.
 
@@ -636,139 +613,23 @@ When something breaks in production, you'll need to read the state file directly
     ```
     The state is a JSON document. The `lineage` and `serial` keys at the top identify this state file's identity and version; the `resources` array is the interesting part.
 
-24. **Inspect with `jq`**
+22. **Inspect it with `jq`**
 
-    Use `jq` to navigate the state. The first command — count of resource types — is a good "what's actually in this state?" sanity check:
+    Count what is actually in the state — a good first question during any incident:
 
     ```bash
     jq '.resources[].type' /tmp/lab1-state.json | sort | uniq -c
     ```
-    Find a specific resource by type:
+    **Expected:** a count of each resource type this workspace manages.
 
-    ```bash
-    jq '.resources[] | select(.type == "aws_ssm_parameter")' /tmp/lab1-state.json
-    ```
-    Extract just the AWS-side IDs (useful when you need them for a CLI command and don't have them stored elsewhere):
-
-    ```bash
-    jq -r '.resources[].instances[].attributes.id // empty' /tmp/lab1-state.json
-    ```
     > **Why this matters in real outages.** When a `terraform apply` half-finishes (network drop, interrupted process), the state on disk and the state in S3 can diverge. `state pull` shows you what S3 thinks; `aws ec2 describe-vpcs --vpc-ids ...` shows you what AWS thinks. Reconciling those two views is the first 10 minutes of any "Terraform is broken" investigation.
 
-25. **Conceptual: stuck locks and `terraform force-unlock`**
-
-    With S3 native locking, a stale lock can occur if `terraform apply` is interrupted mid-flight (Ctrl-C, SSH timeout, CodeBuild stop). The cleanup command:
-
-    ```bash
-    # Don't run this for practice — read about it.
-    terraform force-unlock <LOCK_ID>
-    ```
-    The `<LOCK_ID>` appears in the lock-conflict error message that the next caller sees. You can also see the lock object in S3:
-
-    ```bash
-    aws s3 ls "s3://<your-state-bucket-name>/env:/dev/lab1-app/"   # use the bucket from terraform output
-    # Look for the .tflock file
-    ```
-    If you don't see the `env:/` prefix in your bucket, go back to Step 12 and run the migration block at the end.
-
-    Force-unlock should be a "you'll need it once" tool, not a regular operation. If you find yourself running it often, something else is wrong (concurrent CI runs, runaway processes, broken cleanup). Knowing the command exists is the goal of this step.
-
----
-
-## Task 5: Workspaces vs. Directory Structure Decision (10 min)
-
-Now you'll implement the same deployment using a directory structure to compare with workspaces.
-
-26. **Review the Directory Structure Pattern**
-
-    ```bash
-    cd ~/Advanced_Terraform/lab1/directories
-    ls -la
-    ```
-
-    **Structure:**
-    ```
-    lab1/directories/
-    ├── modules/
-    │   └── app/
-    │       ├── main.tf
-    │       ├── variables.tf
-    │       └── outputs.tf
-    ├── dev/
-    │   ├── main.tf
-    │   ├── providers.tf
-    │   └── terraform.tfvars
-    └── staging/
-        ├── main.tf
-        ├── providers.tf
-        └── terraform.tfvars
-    ```
-
-27. **Review the Module**
-
-    ```bash
-    cat modules/app/main.tf
-    ```
-
-    **The shared module:**
-    ```hcl
-
-    # modules/app/main.tf - Shared application logic
-    variable "user_id" {}
-    variable "environment" {}
-    variable "state_bucket_name" {}
-    variable "bucket_region" {}
-
-    data "terraform_remote_state" "networking" {
-      backend = "s3"
-      config = {
-    bucket = var.state_bucket_name
-    key    = "networking/terraform.tfstate"
-    region = var.bucket_region
-      }
-    }
-
-    resource "aws_ssm_parameter" "app_config" {
-      name  = "/${var.user_id}/${var.environment}/app-config-dir"
-      type  = "String"
-      value = jsonencode({
-    environment = var.environment
-    vpc_id      = data.terraform_remote_state.networking.outputs.vpc_id
-    pattern     = "directory-structure"
-      })
-    }
-    ```
-28. **Review an Environment Directory**
-
-    ```bash
-    cat dev/main.tf
-    ```
-
-    **The dev environment:**
-    ```hcl
-
-    # dev/main.tf - Dev environment configuration
-    module "app" {
-      source = "../modules/app"
-
-      user_id        = var.user_id
-      environment       = "dev"  # Explicit, not from workspace
-      state_bucket_name = var.state_bucket_name
-    }
-    ```
-    **Key difference:** The environment is EXPLICIT (`environment = "dev"`) rather than derived from `terraform.workspace`.
-
-29. **Pick your pattern**
-
-    You've now seen both approaches end-to-end. The slide deck covers the trade-offs in detail; see **Appendix A** at the end of this lab for the comparison table and the hybrid recommendation if you want a quick reference while making the call on a real project.
-
----
 
 ## Bonus Task: Prove Workspace State Isolation (optional, ~3 min)
 
 Optional — skip if you're short on time. This task gives you a concrete look at how workspaces keep state files separated in S3. No new infrastructure is created.
 
-30. **Materialize the prod workspace's state file**
+23. **Materialize the prod workspace's state file**
 
     > Confirm you're in `lab1/state-infra/` on the `dev` workspace.
 
@@ -808,9 +669,9 @@ Optional — skip if you're short on time. This task gives you a concrete look a
 
 ## Task 6: Cleanup (5 min)
 
-The state bucket you created in Step 12 is a **bootstrap resource** — it holds the state file for this very configuration. Terraform can't destroy a bucket that's actively storing its own state (the state file would vanish mid-operation). The standard pattern in real orgs: treat the bootstrap state bucket as **manually managed and never deleted** — it's the durable record of every environment's history, and once a team adopts it, removing it would orphan every state file pointing at it. The steps below follow that pattern: drop the bucket from terraform's view, destroy everything else, and **leave the bucket in place**.
+The state bucket you created in Step 11 is a **bootstrap resource** — it holds the state file for this very configuration. Terraform can't destroy a bucket that's actively storing its own state (the state file would vanish mid-operation). The standard pattern in real orgs: treat the bootstrap state bucket as **manually managed and never deleted** — it's the durable record of every environment's history, and once a team adopts it, removing it would orphan every state file pointing at it. The steps below follow that pattern: drop the bucket from terraform's view, destroy everything else, and **leave the bucket in place**.
 
-31. **Capture the bucket name and remove bootstrap resources from state**
+24. **Capture the bucket name and remove bootstrap resources from state**
 
     > Confirm you're in `lab1/state-infra/` on the `dev` workspace.
 
@@ -828,48 +689,46 @@ The state bucket you created in Step 12 is a **bootstrap resource** — it holds
     terraform state rm aws_s3_bucket_public_access_block.terraform_state
     terraform state rm random_string.suffix
     ```
-32. **Destroy the rest**
+25. **Destroy the rest**
 
     ```bash
     terraform destroy -auto-approve
     ```
-    This destroys what's left in state: `null_resource.workspace_guard`, `time_sleep.locking_demo`, `aws_ssm_parameter.lock_demo`, and `aws_ssm_parameter.app_config` (if Part D was active). The bucket is untouched.
+    This destroys what's left in state: `null_resource.workspace_guard`, `time_sleep.locking_demo`, `aws_ssm_parameter.lock_demo`, and `aws_ssm_parameter.app_config`. The bucket is untouched.
 
-33. **Destroy networking**
+26. **Destroy networking**
 
     ```bash
     cd ~/Advanced_Terraform/lab1/networking
     terraform destroy -auto-approve
     ```
-    Part D and the `lab1/directories` comparison are the only things that read this state, and both are finished, so there is nothing left to keep it for.
+    Nothing else in the course reads this state, so there is nothing left to keep it for.
 
-    > **Doesn't Lab 2 need this VPC?** No. Lab 2 imports either your Day 1-2 VPC and `allow-http-ssh` security group, or the lean stack it deploys itself in Task 1 Option B, both at `192.168.0.0/20`. This networking VPC is `10.20.0.0/16`, and its security group uses inline `ingress`/`egress` blocks rather than the separate rule resources Lab 2 imports, so it can't serve as an import source. Destroy it here and reclaim the VPC quota.
+    > **Doesn't Lab 2 need this VPC?** No. Lab 2 deploys its own stack to import, at `192.168.0.0/20`. This networking VPC is `10.20.0.0/16`, and its security group uses inline `ingress`/`egress` blocks rather than the separate rule resources Lab 2 imports, so it could not serve as an import source anyway. Destroy it here and reclaim the VPC quota.
 
-34. **Clean up workspaces**
+27. **Clean up the workspaces and leave the bucket in place**
 
     ```bash
     cd ~/Advanced_Terraform/lab1/state-infra
     terraform workspace select default
-    # Some workspaces may already be gone after destroy if their state file
-    # was the only env:/<ws>/ object — that's fine.
     terraform workspace delete dev     2>/dev/null || echo "(dev not present)"
     terraform workspace delete staging 2>/dev/null || echo "(staging not present)"
     terraform workspace delete prod    2>/dev/null || echo "(prod not present)"
-
     ```
-35. **Leave the bootstrap bucket in place**
 
-    The bucket and its versioned state files still exist in S3 from Step 31's `state rm` — and that's intentional. **Do not delete it.** Labs 2-4 reference this same bucket, and in any real environment a state bucket is treated as durable, versioned, audit-grade storage that you never tear down as part of routine teardown.
+    The bucket and its versioned state files still exist in S3 after Step 24's `state rm`, and
+    that is intentional. **Do not delete it.** Labs 2, 3, and 4 all read and write it, and in any
+    real environment a state bucket is durable, versioned storage that you never tear down as
+    part of routine cleanup.
 
-    > **Why the lab doesn't ship a delete command:** the bucket has versioning enabled, so `aws s3 rb --force` would leave old object versions and delete markers behind and the bucket-delete itself would fail with `BucketNotEmpty`. Even with the correct version-aware empty sequence (`aws s3api list-object-versions` + `delete-objects`), the right answer in production is still "don't delete the state bucket." Sandbox lab accounts are wiped between cohorts, so the bucket goes with the account — no manual cleanup needed here.
-
-    Confirm the bucket is no longer in terraform's state but still exists in S3:
+    Confirm the bucket is out of Terraform's state but still in S3:
 
     ```bash
     terraform state list | grep terraform_state || echo "bucket not in state (correct)"
     aws s3 ls "s3://$BUCKET/" | head
     ```
     ---
+
 
 ## Troubleshooting
 
@@ -909,58 +768,21 @@ Use with caution -- only when certain no operation is running.
 
 ---
 
-## Knowledge Check
-
-**Q1: What command shows which workspace you're currently in?**
-
-*A: `terraform workspace show` or `terraform workspace list` (asterisk marks current)*
-
-**Q2: How does S3 backend organize state files for workspaces?**
-
-*A: Non-default workspaces get an `env:/<workspace>/` prefix. So `dev` workspace with key `app/terraform.tfstate` becomes `env:/dev/app/terraform.tfstate`.*
-
-**Q3: Why use a precondition in null_resource instead of checking workspace in each resource?**
-
-*A: The precondition runs BEFORE any resource operations and fails fast. Checking in each resource would allow partial applies before failure.*
-
-**Q4: What's the security implication of terraform_remote_state?**
-
-*A: Any team that can read the networking state file can see all its outputs. Design outputs carefully -- don't expose secrets. Consider using data sources for sensitive values.*
-
-**Q5: When would you choose workspaces over directory structure?**
-
-*A: When environments are structurally identical (same resources, different values), when you need rapid iteration, or for ephemeral feature branch environments.*
-
----
-
 ## Lab Completion Checklist
 
-- [ ] Cloned lab repository and configured S3 backend
-- [ ] Created dev, staging, and prod workspaces
-- [ ] Understood how workspaces affect state paths (`env:/`)
-- [ ] Used `terraform.workspace` in configuration
-- [ ] Implemented workspace safety guard that blocks `default` workspace
-- [ ] Tested `feature-*` workspace pattern
-- [ ] Deployed networking infrastructure with outputs
-- [ ] Configured `terraform_remote_state` to read networking outputs
-- [ ] Deployed application that consumes networking state
-- [ ] Verified cross-state dependency with matching VPC IDs
-- [ ] Compared workspaces vs. directory structure patterns
-- [ ] Cleaned up resources
+- [ ] Built and configured the deployment VM, and installed Terraform on it
+- [ ] Cloned the lab repository
+- [ ] Created dev, staging, and prod workspaces and confirmed their state is separate
+- [ ] Used `terraform.workspace` to vary configuration per environment
+- [ ] Created the S3 state bucket and captured its name
+- [ ] Migrated local state to the bucket with `-backend-config` at init
+- [ ] Saw the workspace guard block the `default` workspace, and allow `dev`
+- [ ] Tested the `feature-*` workspace pattern
+- [ ] Deployed the networking state and read its outputs with `terraform_remote_state`
+- [ ] Verified the cross-state dependency by matching VPC IDs
+- [ ] Read the raw state file with `state pull` and `jq`
+- [ ] Cleaned up, leaving the state bucket in place for Labs 2-4
 
----
-
-## Cost Considerations
-
-| Resource | Cost |
-|---|---|
-| VPC (networking state) | Free (no NAT Gateway) |
-| SSM Parameters | Free (standard tier) |
-| S3 State Storage | ~$0.00 (state files < 50 KB) |
-
-**Keep** the S3 bucket for Labs 2, 3, and 4.
-
----
 
 ## Next Steps
 
@@ -983,47 +805,3 @@ In **Lab 2: Import Legacy Application**, you will:
 | S3 Backend Configuration | https://developer.hashicorp.com/terraform/language/settings/backends/s3 |
 
 ---
-
-## Appendix A: Workspaces vs. Directory Structure — Reference
-
-This material is covered in the lecture/slide deck; it lives here as a quick reference you can come back to when you're picking a pattern on a real project.
-
-### Comparison
-
-| Aspect | Workspaces | Directory Structure |
-|--------|------------|---------------------|
-| **Switching environments** | `terraform workspace select staging` | `cd ../staging` |
-| **Accidental wrong env** | Easy — just a command | Harder — must cd to wrong directory |
-| **Code duplication** | None | Some (providers.tf, main.tf) |
-| **Environment differences** | Requires conditionals | Clean separation |
-| **Module versioning** | All envs use same version | Each can pin different version |
-| **CI/CD pipelines** | Pass workspace as variable | Change directory |
-
-### Recommended pattern: hybrid
-
-| Use **workspaces** for | Use **directory structure** for |
-|------------------------|----------------------------------|
-| Feature-branch ephemeral environments | Production environments (explicit separation) |
-| Environments that are structurally identical | Environments that need different resources |
-| Rapid iteration during development | When teams want to pin different module versions |
-
-### Layout you'd see in a real org
-
-```
-infrastructure/
-├── networking/                    # No workspaces — one state
-│   └── terraform.tfstate
-├── applications/
-│   ├── payments/                  # Uses workspaces for dev/staging
-│   │   ├── main.tf
-│   │   └── (dev, staging workspaces)
-│   └── checkout/
-│       └── ...
-└── production/                    # Separate directory for prod
-    ├── payments/
-    │   ├── main.tf               # Can have prod-only resources
-    │   └── backend.tf            # Separate state path
-    └── checkout/
-```
-
-Networking is a single state (rarely changes, shared). Non-prod environments use workspaces for speed. Prod gets a separate directory so you can pin different module versions and accept different resources without conditionals.
