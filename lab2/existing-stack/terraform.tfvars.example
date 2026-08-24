@@ -1,11 +1,11 @@
-# lab2-day1-vpc-lean/terraform.tfvars.example
+# lab2/existing-stack/terraform.tfvars.example
 #
 # Copy to terraform.tfvars and set user_id to your assigned AWS login ID.
-# All other values default to Day 1-2's tfvars.
+# All other values have defaults.
 
 user_id = "userxx"   # REPLACE: your assigned AWS login ID (e.g. user07)
 
-# Optional overrides — defaults match Day 1-2:
+# Optional overrides:
 primary_region       = "us-east-2"   # the region you work in
 # vpc_name             = "vpc"
 # vpc_cidr             = "192.168.0.0/20"

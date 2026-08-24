@@ -1,10 +1,10 @@
-# lab2-day1-vpc-lean/providers.tf
+# lab2/existing-stack/providers.tf
 #
-# LOCAL state by design — this stack simulates "console-built / Day 1-2-built"
+# LOCAL state by design — this stack plays the role of infrastructure built
 # infrastructure that lives outside Terraform's managed remote state. The whole
 # point of Lab 2 is to import these resources INTO remote state.
 #
-# Day 1-2 pattern: providers configured here, no backend block.
+# Providers configured here, no backend block — nothing remote owns this state.
 
 terraform {
   required_version = ">= 1.10.0"

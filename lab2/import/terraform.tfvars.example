@@ -1,12 +1,11 @@
-# lab2-import/terraform.tfvars.example
+# lab2/import/terraform.tfvars.example
 #
 # Copy to terraform.tfvars and fill in.
 
 user_id        = "userxx"     # Your assigned AWS login ID (e.g. user07)
 primary_region = "us-east-2"  # The region the resources you are importing live in
 
-# VPC stack resource IDs — get from Day 1-2 outputs OR
-# from `terraform output` in lab2-day1-vpc-lean/.
+# VPC stack resource IDs — from `terraform output` in lab2/existing-stack/.
 vpc_id              = "vpc-0xxxxxxxxxxxxxxxx"
 subnet_id           = "subnet-0xxxxxxxxxxxxxxxx"
 internet_gateway_id = "igw-0xxxxxxxxxxxxxxxx"
@@ -20,6 +19,6 @@ sg_rule_http_id   = "sgr-0xxxxxxxxxxxxxxxx"
 sg_rule_ssh_id    = "sgr-0xxxxxxxxxxxxxxxx"
 sg_rule_egress_id = "sgr-0xxxxxxxxxxxxxxxx"
 
-# Optional overrides (defaults match Day 1-2):
+# Optional overrides:
 # vpc_cidr           = "192.168.0.0/20"
 # public_subnet_cidr = "192.168.0.0/24"

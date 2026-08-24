@@ -831,11 +831,11 @@ Use with caution -- only when certain no operation is running.
 
 ## Next Steps
 
-In **Lab 2: Import Legacy Application**, you will:
-- Deploy a "legacy" application simulating console-created infrastructure
-- Use `import` blocks to bring resources under Terraform management
-- Practice state operations to resolve import conflicts
-- Store imported state using the patterns learned today
+In **Lab 2: Import Existing Infrastructure into Remote State**, you will:
+- Deploy a VPC and security group stack that sits outside any remote state
+- Use `import` blocks to bring those resources under Terraform management
+- See what `-generate-config-out` produces, and why it needs cleaning up
+- Store the imported state under its own key in the bucket you built today
 
 ---
 

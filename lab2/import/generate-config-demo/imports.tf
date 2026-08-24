@@ -1,26 +1,25 @@
-# lab2-import/imports.tf
+# lab2/import/generate-config-demo/imports.tf
 #
-# Import blocks (Terraform 1.5+) declaring 9 existing AWS resources to bring
-# under Terraform management. Resource addresses match Day 1-2 Lab 3 Task 2
-# (VPC stack) and Task 3 (allow-http-ssh security group with modern rules) —
-# pre-Lab 4 refactor (single subnet, no for_each).
+# Import blocks (Terraform 1.5+) declaring the 9 existing AWS resources this lab
+# brings under Terraform management: a VPC stack of 5, plus a security group and
+# its 3 modern rule resources.
 #
 # Why these 9 and not more?
-#   - NO S3 bucket: Day 1-2 Lab 3 already manages it under `module.s3_bucket`.
-#     You don't import resources that are already managed elsewhere — that
-#     creates dual-state. You also generally don't experiment with state
-#     buckets in import labs because of recursive-destroy risk.
-#   - NO NAT gateway: cost concern (~$1/day per student).
-#   - NO ALB / ALB SG: Lab 5 territory; not needed for the import lesson.
-#   - NO for_each subnets: keeps the resource-address concepts clean.
-#     Students learned for_each in Lab 4; they don't need to re-learn it
-#     while focusing on import semantics.
+#   - NO S3 bucket: lab1/state-infra already manages it. You do not import a
+#     resource that is already managed elsewhere -- that creates dual-management,
+#     where two states each believe they own it.
+#   - NO NAT gateway: nothing here needs one, and it bills by the hour.
+#   - NO load balancer or auto scaling group: not part of the import lesson.
 #
-# Dependency order matters (facts_extracted.md §6):
+# Dependency order matters:
 #   VPC -> subnet -> IGW -> route table -> route table association
+#   security group -> its rules (the rules reference the SG ID)
+#
+# This folder ships the complete set of 9 as the reference. The main lab
+# directory (../imports.tf) leaves the 4 security-group blocks for the student.
 
 # ---------------------------------------------------------------------------
-# VPC stack (5 resources, lifted from Lab 3 Task 2 / aws/vpc/custom-vpc.tf)
+# VPC stack (5 resources)
 # ---------------------------------------------------------------------------
 
 import {
@@ -51,9 +50,10 @@ import {
 }
 
 # ---------------------------------------------------------------------------
-# Security group + 3 modern rules (Lab 3 Task 3 / aws/security-group/)
-# Note: Day 1-2 uses the modern aws_vpc_security_group_*_rule resources, NOT
-# inline ingress {} / egress {} blocks. This is the AWS-recommended pattern.
+# Security group + 3 modern rules
+# Note: these use the modern aws_vpc_security_group_*_rule resources, NOT
+# inline ingress {} / egress {} blocks. That is the AWS-recommended pattern, and
+# it means each rule is a separately importable resource with its own sgr- ID.
 # ---------------------------------------------------------------------------
 
 import {

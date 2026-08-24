@@ -1,17 +1,17 @@
-# Lab 2: Import Day 1-2 Infrastructure into Remote State
+# Lab 2: Import Existing Infrastructure into Remote State
 
 > 📖 **Student instructions:** [`../labs/lab2.md`](../labs/lab2.md)
 >
 > The Terraform code in this folder is what students run during the lab; the step-by-step instructions live in the `labs/` folder at the repo root.
 
-Bring the existing Day 1-2 VPC + Security Group under proper remote-state Terraform management. **9 resources imported**, S3 state bucket deliberately not imported (it's already managed by Day 1-2's `module.s3_bucket` in `aws/s3-bucket/`).
+Bring a VPC + Security Group stack that exists outside Terraform under proper remote-state management. **9 resources imported**, S3 state bucket deliberately not imported (it is already managed by `lab1/state-infra`).
 
 ## Subfolders
 
 | Folder | Used for |
 |--------|----------|
-| [`day1-vpc-lean/`](./day1-vpc-lean/) | Fallback for students whose Day 1-2 VPC was destroyed at end of class. Deploys the same resource names as Day 1-2 `aws/vpc/` + `aws/security-group/` minus the NAT Gateway (~$1/day saved). |
-| [`import/`](./import/) | The actual Lab 2 working directory. 9 import blocks (5 VPC + 1 SG + 3 rules), cleaned config files (`network.tf`, `security-group.tf`), and `outputs.tf`. Imports happen in the **dev** workspace. |
+| [`existing-stack/`](./existing-stack/) | The stack students import. Deployed in Task 1 with **local state**, so it plays the role of infrastructure that exists outside any remote state. No NAT Gateway. |
+| [`import/`](./import/) | The actual Lab 2 working directory. `imports.tf` ships the 5 VPC-stack import blocks; students write the 4 security-group blocks in Step 8. Cleaned config files (`network.tf`, `security-group.tf`) and `outputs.tf`. Imports happen in the **dev** workspace. |
 
 ## Resources imported (in order)
 
@@ -29,4 +29,4 @@ NAT Gateway, ALB, ALB SG, and the for_each subnet refactor are intentionally out
 
 ## Why no S3?
 
-The state bucket is already managed by Day 1-2. Importing it into a second state would create dual-management — both states would think they own it, and the next `terraform apply` from either side could break the other. Plus you generally don't experiment with state buckets in import labs.
+The state bucket is already managed by `lab1/state-infra`. Importing it into a second state would create dual-management — both states would think they own it, and the next `terraform apply` from either side could break the other. Plus you generally don't experiment with state buckets in import labs.

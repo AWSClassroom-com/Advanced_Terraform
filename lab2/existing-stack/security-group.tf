@@ -1,14 +1,14 @@
-# lab2-day1-vpc-lean/security-group.tf
+# lab2/existing-stack/security-group.tf
 #
-# Replicates Day 1-2 Lab 3 Task 3 — `allow-http-ssh` SG with 3 modern rules.
-# Identical to aws/security-group/ in the Day 1-2 repo.
+# The `allow-http-ssh` security group with its 3 modern rule resources, as
+# Lab 2 expects to find and import them.
 #
 # Note: Modern AWS rule pattern (separate aws_vpc_security_group_*_rule
 # resources) — NOT inline ingress {} / egress {} blocks. Imports later
 # need separate IDs for the SG and each rule.
 
 variable "security_group_name" {
-  description = "Name suffix for the security group. Defaults to Day 1-2 value."
+  description = "Name suffix for the security group."
   type        = string
   default     = "allow-http-ssh"
 }

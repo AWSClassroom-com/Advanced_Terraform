@@ -1,17 +1,17 @@
-# lab2-day1-vpc-lean/custom-vpc.tf
+# lab2/existing-stack/custom-vpc.tf
 #
-# This is a copy of aws/vpc/custom-vpc.tf from the Day 1-2 repo, with the
-# NAT gateway commented out. Students who already deployed the full Day 1-2
+# The VPC stack Lab 2 imports, with the NAT gateway commented out.
+# Students who already deployed a full
 # VPC can skip this and import their existing resources directly. Students
 # who don't have it running deploy this lean version (~$0/hour) and import.
 #
 # Source: https://github.com/AWSClassroom-com/hands-on-terraform/blob/main/aws/vpc/custom-vpc.tf
 #
-# What changed from the Day 1-2 original:
+# What is left out:
 #   - Removed `aws_nat_gateway.ngw` (NAT GW is ~$1/day; not needed for the import lab)
 #   - Removed the EIP that the NAT GW used
 # Everything else (resource names, tags, CIDRs) is identical so the import
-# blocks in lab2-import/ work against either this lean version OR the original.
+# blocks in lab2/import/ work against either this lean version OR the original.
 
 data "aws_availability_zones" "available" {
   state = "available"
@@ -46,7 +46,7 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# NAT gateway removed in lean version — uncomment to match full Day 1-2 stack.
+# NAT gateway left out — nothing in Lab 2 needs one, and it bills by the hour.
 # resource "aws_nat_gateway" "ngw" {
 #   allocation_id = aws_eip.nat.id
 #   subnet_id     = aws_subnet.subnet-a.id

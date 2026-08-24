@@ -1,11 +1,11 @@
-# lab2-import/network.tf
+# lab2/import/network.tf
 #
 # Cleaned VPC configuration for the imported resources. This is what the
 # Terraform state will look like AFTER import — it must match the actual
 # AWS reality so `terraform plan` shows "0 to change" once imports complete.
 #
-# Compare to lab2-day1-vpc-lean/custom-vpc.tf (or aws/vpc/custom-vpc.tf in
-# the Day 1-2 repo): same resource addresses, same essential attributes,
+# Compare to lab2/existing-stack/custom-vpc.tf: same resource addresses,
+# same essential attributes,
 # minus computed fields (arn, id, owner_id) that auto-generated config
 # would have included. This is the "cleanup pattern" Module 2 teaches.
 

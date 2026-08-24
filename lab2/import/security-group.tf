@@ -1,9 +1,9 @@
-# lab2-import/security-group.tf
+# lab2/import/security-group.tf
 #
-# Cleaned configuration for the security group + 3 rules from Day 1-2 Lab 3
-# Task 3. Resource addresses match aws/security-group/ in the Day 1-2 repo.
+# Cleaned configuration for the security group + its 3 rules. Resource
+# addresses match lab2/existing-stack/security-group.tf.
 #
-# Note: Day 1-2 uses the MODERN AWS rule pattern — separate
+# Note: this uses the MODERN AWS rule pattern — separate
 # aws_vpc_security_group_ingress_rule / egress_rule resources, NOT inline
 # ingress {} / egress {} blocks. The modern pattern enables changes to
 # individual rules without recreating the whole SG (important when the SG

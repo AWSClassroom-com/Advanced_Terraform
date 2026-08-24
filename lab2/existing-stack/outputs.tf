@@ -1,11 +1,11 @@
-# lab2-day1-vpc-lean/outputs.tf
+# lab2/existing-stack/outputs.tf
 #
 # These outputs surface the resource IDs students need to paste into
-# lab2-import/terraform.tfvars. Day 1-2's vpc/ module didn't expose these
+# lab2/import/terraform.tfvars. A typical VPC module does not expose these
 # (it had no outputs.tf at all) — adding them here for the import flow.
 
 output "vpc_id" {
-  description = "ID of the imported VPC. Paste into lab2-import/terraform.tfvars."
+  description = "ID of the imported VPC. Paste into lab2/import/terraform.tfvars."
   value       = aws_vpc.custom-vpc.id
 }
 

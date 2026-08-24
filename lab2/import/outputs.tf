@@ -1,4 +1,4 @@
-# lab2-import/outputs.tf
+# lab2/import/outputs.tf
 
 output "vpc_id" {
   description = "VPC ID after import."

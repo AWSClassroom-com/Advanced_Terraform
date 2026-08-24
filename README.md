@@ -2,14 +2,14 @@
 
 Terraform code for the four hands-on labs in **Advanced Terraform on AWS** (Day 3 of the Hands-On Terraform series). Students deploy each lab's infrastructure with `terraform init`/`plan`/`apply` instead of typing every resource by hand.
 
-This is a **companion** to the Day 1-2 [hands-on-terraform](https://github.com/AWSClassroom-com/hands-on-terraform) repo. Day 3 assumes the Day 1-2 stack is already running: state bucket, VPC, security group, and the EC2 deploy server.
+This is a **companion** to the Day 1-2 [hands-on-terraform](https://github.com/AWSClassroom-com/hands-on-terraform) repo. Day 3 carries the knowledge forward but not the infrastructure — it builds everything it needs, starting from an empty account.
 
 ## 📖 Start here — student instructions
 
 The numbered step-by-step lab walkthroughs live in [**`labs/`**](./labs/), one Markdown file per lab:
 
 - [`labs/lab1.md`](./labs/lab1.md) — Multi-Environment State Strategy
-- [`labs/lab2.md`](./labs/lab2.md) — Import Day 1-2 Infrastructure
+- [`labs/lab2.md`](./labs/lab2.md) — Import Existing Infrastructure
 - [`labs/lab3.md`](./labs/lab3.md) — Pipeline Operations
 - [`labs/lab4.md`](./labs/lab4.md) — Auditing & Observability
 
@@ -20,7 +20,7 @@ The top-level `lab1/`, `lab2/`, `lab3/`, `lab4/` folders contain the Terraform *
 | Lab | Folder | What it covers |
 |-----|--------|----------------|
 | **Lab 1** | [`lab1/`](./lab1/) | Multi-Environment State Strategy: workspaces, safety guards, cross-state dependencies, directory pattern |
-| **Lab 2** | [`lab2/`](./lab2/) | Importing existing infrastructure: bring Day 1-2 VPC + SG under remote-state Terraform management |
+| **Lab 2** | [`lab2/`](./lab2/) | Importing existing infrastructure: bring an unmanaged VPC + SG under remote-state Terraform management |
 | **Lab 3** | [`lab3/`](./lab3/) | Pipeline Operations: CodePipeline + CodeBuild + multi-region promotion (staging → prod) |
 | **Lab 4** | [`lab4/`](./lab4/) | Auditing & Observability: CloudTrail queries + CloudWatch dashboard for Terraform activity |
 
@@ -33,7 +33,7 @@ Advanced_Terraform/
 │   ├── networking/          shared VPC for terraform_remote_state demo
 │   └── directories/         module + dev/ + staging/ (directory pattern)
 ├── lab2/
-│   ├── day1-vpc-lean/       fallback if Day 1-2 VPC was destroyed
+│   ├── existing-stack/       the stack Lab 2 imports (local state)
 │   └── import/              9-resource import target (VPC + SG/rules)
 ├── lab3/
 │   ├── pipeline/            CodePipeline + CodeBuild + IAM
@@ -80,13 +80,17 @@ terraform destroy
 
 Students need a broad lab IAM policy. The companion course materials include `lab_required_permissions.json` listing all `<service>:*` permissions detected from this code (13 services: autoscaling, cloudtrail, cloudwatch, codebuild, codecommit, codepipeline, ec2, elasticloadbalancing, iam, logs, s3, ssm, sts). **Sandbox use only — never apply to production.**
 
-## Day 1-2 stack assumed (matters for Lab 2)
+## What Day 3 builds for itself
 
-By the time students reach Lab 2, they should have running from Days 1-2:
+Day 3 starts from an empty AWS account. Nothing from Days 1-2 has to be running:
 
-- S3 state bucket: `tf-state-${var.account}-<random>` with `object_lock_enabled = true`
-- VPC: `${var.account}-vpc` (192.168.0.0/20) + public subnet + IGW + NAT GW + RT + RT assoc
-- Security group: `${var.account}-allow-http-ssh` with three modern rule resources
-- Deploy EC2: `deploy-${var.account}` (created via console)
+- **Deploy EC2 instance** — Lab 1 Task 1 launches it (`deploy-<user_id>`, t3.small, Amazon Linux 2023,
+  instance profile `Terraform-InstanceRole`).
+- **S3 state bucket** — `lab1/state-infra` creates it (`<user_id>-terraform-state-<random>`, versioned
+  and encrypted). Locking is Terraform 1.10+ S3 native locking, so there is no DynamoDB table and no
+  Object Lock.
+- **VPC + security group** — `lab2/existing-stack` deploys them with **local state** in Lab 2 Task 1,
+  so they stand in for infrastructure that exists outside any remote state. Lab 2 then imports them.
 
-If the VPC + SG were destroyed at end of class, Lab 2's `lab2/day1-vpc-lean/` lets students redeploy without NAT Gateway cost.
+What does carry over from Days 1-2 is knowledge, not resources: workspaces, remote state, the
+`-backend-config` init pattern, import blocks, and modules.

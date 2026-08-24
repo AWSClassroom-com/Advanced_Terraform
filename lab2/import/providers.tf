@@ -1,4 +1,4 @@
-# lab2-import/providers.tf
+# lab2/import/providers.tf
 #
 # Lab 2 uses the SAME state bucket Lab 1 created (lab1/state-infra's
 # `terraform output state_bucket_name`) but a SEPARATE state path under

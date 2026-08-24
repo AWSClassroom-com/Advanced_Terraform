@@ -22,11 +22,11 @@ variable "user_id" {
 }
 
 # ---------------------------------------------------------------------------
-# Resource IDs students paste in from Day 1-2 (or from `lab2-day1-vpc-lean/`).
+# Resource IDs students paste in from `terraform output` in lab2/existing-stack/.
 # ---------------------------------------------------------------------------
 
 variable "vpc_id" {
-  description = "ID of the existing VPC to import. Get from Day 1-2 deployment or `terraform output vpc_id` in lab2-day1-vpc-lean/."
+  description = "ID of the existing VPC to import. Get it from `terraform output vpc_id` in lab2/existing-stack/."
   type        = string
 }
 
@@ -54,7 +54,7 @@ variable "security_group_id" {
 }
 
 variable "sg_rule_http_id" {
-  description = "ID of the HTTP ingress rule (sgr-...). Get from `aws ec2 describe-security-group-rules` or from outputs of lab2-day1-vpc-lean/."
+  description = "ID of the HTTP ingress rule (sgr-...). Get from `aws ec2 describe-security-group-rules` or from outputs of lab2/existing-stack/."
   type        = string
 }
 

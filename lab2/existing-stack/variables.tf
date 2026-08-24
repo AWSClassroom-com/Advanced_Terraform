@@ -1,10 +1,9 @@
-# lab2-day1-vpc-lean/variables.tf
+# lab2/existing-stack/variables.tf
 #
-# Identical to aws/vpc/variables.tf from the Day 1-2 repo so resource names
-# match exactly when imported into lab2-import/.
+# Resource names here must match what lab2/import/ expects to import.
 
 variable "primary_region" {
-  description = "AWS region. NO default — set in terraform.tfvars to whatever your instructor assigned (matches Day 1-2 convention)."
+  description = "AWS region. NO default — set it in terraform.tfvars to the region your instructor assigned."
   type        = string
 }
 
@@ -25,7 +24,7 @@ variable "vpc_name" {
 }
 
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC. Day 1-2 default."
+  description = "CIDR block for the VPC."
   type        = string
   default     = "192.168.0.0/20"
 }
@@ -37,7 +36,7 @@ variable "public_subnet_a_name" {
 }
 
 variable "public_subnet_a_cidr" {
-  description = "CIDR block for the public subnet. Day 1-2 default."
+  description = "CIDR block for the public subnet."
   type        = string
   default     = "192.168.0.0/24"
 }
