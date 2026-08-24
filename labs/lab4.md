@@ -36,7 +36,7 @@ You need to demonstrate:
 
     - Query CloudTrail Event History to identify Terraform API calls
     - Distinguish pipeline-initiated changes from manual console/CLI activity
-    - Build reusable CloudWatch Log Insights queries for audit reporting
+    - Build reusable CloudWatch Log Analytics queries for audit reporting
     - Deploy a CloudWatch dashboard for operational visibility
     - Articulate how Labs 1-4 form a complete SOC 2-ready Terraform workflow
 
@@ -46,7 +46,7 @@ You need to demonstrate:
 
 ![Audit & Observability Architecture](../assets/images/lab4_observability_architecture.png)
 
-*Figure: The observability layer provides three capabilities: CloudTrail for audit trail, Log Insights for queries, and CloudWatch Dashboard for real-time visibility.*
+*Figure: The observability layer provides three capabilities: CloudTrail for audit trail, Log Analytics for queries, and CloudWatch Dashboard for real-time visibility.*
 
 ### Key Concepts
 
@@ -282,8 +282,8 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     | Build Activity by Stage | `AWS/CodeBuild`, `Builds`, stacked area | Which stages ran, and when |
     | State Bucket Operations | `AWS/S3`, `GetRequests` + `PutRequests` on `var.state_bucket_name` | Reads (plans) vs. writes (applies) on the state bucket |
     | State Bucket PutRequests | `AWS/S3`, `PutRequests` on `var.state_bucket_name` with FilterId `EntireBucket` | State writes, including the `.tflock` lock and unlock |
-    | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Logs Insights |
-    | Audit Query Reference | Static markdown widget | Three CloudTrail Logs Insights query templates |
+    | Quick Links | Static markdown widget | Direct links to CodePipeline, CodeBuild, CloudTrail, S3, Log Analytics |
+    | Audit Query Reference | Static markdown widget | Three CloudTrail Log Analytics query templates |
 
     > **Why no pipeline-level widgets?** CodePipeline publishes almost nothing to CloudWatch. Metrics arrived only in 2025, only for V2 pipelines, and even there the list is `PipelineDuration` and `FailedPipelineExecutions` — there is no success metric at all. Every stage of this pipeline is a CodeBuild project, and CodeBuild does publish `SucceededBuilds`, `FailedBuilds`, `Builds` and `Duration` per project, so the dashboard asks CodeBuild instead. Worth remembering when you build your own: check that a metric exists before you design a widget around it.
 
@@ -476,7 +476,7 @@ Cost note: request metrics bill at CloudWatch custom-metric rates for metrics th
 | CloudTrail User Guide | https://docs.aws.amazon.com/awscloudtrail/latest/userguide/ |
 | CloudTrail Event Record Contents | https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html |
 | CloudWatch Dashboards | https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Dashboards.html |
-| Logs Insights Query Syntax | https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html |
+| Logs Insights language query syntax | https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html |
 | S3 Native State Locking (Terraform 1.10+) | https://developer.hashicorp.com/terraform/language/state/locking |
 | SOC 2 on AWS | https://aws.amazon.com/compliance/soc-faqs/ |
 

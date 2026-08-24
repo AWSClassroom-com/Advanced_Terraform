@@ -4,7 +4,7 @@
 >
 > The Terraform code in this folder is what students run during the lab; the step-by-step instructions live in the `labs/` folder at the repo root.
 
-CloudWatch dashboard summarizing Terraform activity: CodeBuild build duration + success/failure, CodePipeline executions, S3 state bucket operations, S3 lockfile activity. Plus reference panels with Logs Insights query templates and quick links to relevant consoles.
+CloudWatch dashboard summarizing Terraform activity: CodeBuild build duration + success/failure, CodePipeline executions, S3 state bucket operations, S3 lockfile activity. Plus reference panels with Log Analytics query templates and quick links to relevant consoles.
 
 ## Subfolder
 

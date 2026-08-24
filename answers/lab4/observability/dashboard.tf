@@ -214,7 +214,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
             - [CodeBuild Projects](https://${var.primary_region}.console.aws.amazon.com/codesuite/codebuild/projects)
             - [CloudTrail Event History](https://${var.primary_region}.console.aws.amazon.com/cloudtrail/home#/events)
             - [State Bucket](https://${var.primary_region}.console.aws.amazon.com/s3/buckets/${var.state_bucket_name})
-            - [Logs Insights](https://${var.primary_region}.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
+            - [Log Analytics](https://${var.primary_region}.console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights)
           EOT
         }
       },
@@ -229,7 +229,7 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
           markdown = <<-EOT
             ## Audit Query Reference
 
-            Run these in CloudWatch Logs Insights against your CloudTrail log group.
+            Run these in CloudWatch Log Analytics against your CloudTrail log group.
 
             **All Terraform activity (last 12 hours)**
             ```
