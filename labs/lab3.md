@@ -6,13 +6,13 @@
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
 | **Chapter** | CI/CD Pipelines for Multi-Region Deployment |
-| **Duration** | 60 minutes |
+| **Duration** | 80 minutes |
 | **Difficulty** | Advanced |
-| **Version** | 3.2 |
+| **Version** | 4.0 |
 | **Prerequisites** | Lab 1 completed (state bucket created and captured) |
 | **Terraform** | >= 1.10.0 |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab3/pipeline/`, `lab3/app-repo/` |
-| **Answers** | [`answers/lab3/`](../answers/lab3/) — complete code, including the Step 23-24 buildspec. Try the lab first. |
+| **Answers** | [`answers/lab3/`](../answers/lab3/) — complete code, including the Step 20-24 buildspec. Try the lab first. |
 ---
 
 ## Lab Overview
@@ -21,7 +21,7 @@
 
 After a production incident in Days 1-2, your CTO mandated: *"No human runs terraform apply against production from their laptop."* The platform team built a CI/CD pipeline, but it has only been tested with simple SSM parameters.
 
-Today, you'll push **real infrastructure** through the pipeline: a complete web application stack with VPC, networking, and EC2 instances. You'll deploy to staging (us-east-2), verify it works, approve, then promote to production (us-west-2). At the end, you'll tear down both environments through the pipeline -- demonstrating the full infrastructure lifecycle.
+Today, you'll push **real infrastructure** through the pipeline: a complete web application stack with VPC, networking, and EC2 instances. You'll deploy to staging (us-east-1), verify it works, approve, then promote to production (us-west-2). At the end, you'll tear both environments down and see why the teardown does not go through the pipeline.
 
 ### What You'll Deploy
 
@@ -29,11 +29,11 @@ Each student deploys their own isolated infrastructure, tagged with their IAM us
 
 | Resource | Purpose |
 |----------|---------|
-| VPC (10.0.0.0/16) | Isolated network per student |
+| VPC | `10.10.0.0/16` in staging, `10.20.0.0/16` in prod — one /16 per environment |
 | Public Subnet | Hosts the web server |
 | Internet Gateway | Enables internet access |
 | Route Table | Routes traffic to IGW |
-| Security Group | Allows HTTP (80) and SSH (22) |
+| Security Group | Allows HTTP (80) inbound only |
 | EC2 Instance | Apache web server |
 
 ### Learning Objectives
@@ -41,7 +41,7 @@ Each student deploys their own isolated infrastructure, tagged with their IAM us
 By the end of this lab, you will:
 
 - **Deploy real infrastructure through a pipeline** (not just SSM parameters)
-- **Experience multi-region promotion** (staging in us-east-2 → prod in us-west-2)
+- **Experience multi-region promotion** (staging in us-east-1 → prod in us-west-2)
 - **Verify deployments** by curling the web servers
 - **Practice the approval workflow** with actual infrastructure at stake
 - **Tear down through the pipeline** demonstrating full lifecycle management
@@ -52,78 +52,74 @@ By the end of this lab, you will:
 
 ![CI/CD Pipeline Architecture](../assets/images/lab3_pipeline_architecture.png)
 
-*Figure: The 8-stage CodePipeline deploys to staging (us-east-2) first, then promotes to production (us-west-2) after manual approval. Each environment gets its own isolated VPC with EC2 running Apache.*
+*Figure: The 8-stage CodePipeline runs in us-east-2 and deploys to staging (us-east-1) first, then promotes to production (us-west-2) after manual approval. Each environment gets its own isolated VPC with EC2 running Apache.*
 
 ---
 
 ## Task 1: Review Pipeline Infrastructure (10 min)
 
-1. **Navigate to Pipeline Directory**
+1. **Review the pipeline and its eight stages**
 
     ```bash
     cd ~/Advanced_Terraform/lab3/pipeline
     ls -la
+    cat codepipeline.tf
     ```
-
-    **Key files:**
 
     | File | Purpose |
     |------|---------|
     | `providers.tf` | Backend and AWS provider |
-    | `variables.tf` | IAM username and bucket name |
+    | `variables.tf` | Your user ID and state bucket name |
     | `iam.tf` | IAM roles for CodeBuild and CodePipeline |
     | `codebuild.tf` | Build projects for validate, plan, apply |
     | `codepipeline.tf` | Pipeline stages with approval gates |
     | `outputs.tf` | Repository URL, pipeline name |
 
-2. **Review the Pipeline Stages**
-
-    ```bash
-    cat codepipeline.tf
-    ```
-
-    **Notice the 8-stage flow:**
+    **The 8-stage flow:**
 
     1. **Source** - Polls CodeCommit for pushes to `main` (`PollForSourceChanges = "true"`)
     2. **Validate** - `terraform fmt -check` + `terraform validate`
-    3. **Plan-Staging** - Plans for us-east-2, saves artifact
+    3. **Plan-Staging** - Plans for us-east-1, saves artifact
     4. **Approve-Staging** - Manual approval gate
-    5. **Apply-Staging** - Applies saved plan to us-east-2
+    5. **Apply-Staging** - Applies saved plan to us-east-1
     6. **Plan-Production** - Plans for us-west-2, saves artifact
     7. **Approve-Production** - Manual approval gate
     8. **Apply-Production** - Applies saved plan to us-west-2
 
-3. **Review the CodeBuild Projects**
+    Notice `pipeline_type = "V2"` near the top of the resource. Left unset, the type follows
+    whichever provider version your `init` resolved — two students running identical code can end
+    up on different types, with different execution modes, different billing, and different
+    CloudWatch metrics. Lab 4's dashboard depends on knowing which you have.
+
+2. **Read the buildspec pattern and the two IAM roles**
+
+    Each stage runs in a CodeBuild project, and `codebuild.tf` embeds the **buildspec** — the shell
+    script CodeBuild runs — inline in each project. Look at the plan and apply projects:
 
     ```bash
-    cat codebuild.tf
+    grep -A2 'terraform plan -out' codebuild.tf
+    grep -A2 'terraform apply' codebuild.tf
     ```
 
-    Each pipeline stage runs in a CodeBuild project. `codebuild.tf` defines those projects and — critically — embeds the **buildspec** (the shell script CodeBuild runs) for each one. Don't run any terraform commands at this step; just read the file.
-
-    Scroll through and find the **plan-stage buildspec** and the **apply-stage buildspec** inside `codebuild.tf`. You'll see this pattern:
-
     ```bash
-    # plan-stage buildspec (inside codebuild.tf)
+    # plan-stage buildspec
     terraform plan -out=tfplan
 
-    # apply-stage buildspec (inside codebuild.tf, runs after the manual approval)
+    # apply-stage buildspec, after the manual approval
     terraform apply -auto-approve tfplan
     ```
 
-    This is the **Golden Rule of Terraform automation**: the plan stage produces a binary plan artifact (`tfplan`), and the apply stage **executes that exact artifact** instead of re-planning. The approver reviews what `plan` produced; `apply` is then guaranteed to do exactly that — nothing else. If apply were to re-plan, state or AWS could have drifted between approval and execution, and the apply would silently run a different change than the one that was reviewed.
-    
-4. **Review IAM Roles**
+    This is the **Golden Rule of Terraform automation**: the plan stage produces a binary plan
+    artifact, and the apply stage executes **that exact artifact** instead of re-planning. The
+    approver reviews what `plan` produced, and `apply` does that and nothing else. If apply
+    re-planned, state or AWS could have drifted between approval and execution, and the apply would
+    silently run a different change than the one that was reviewed.
 
-    ```bash
-    cat iam.tf
-    ```
-
-    **Two roles with separate responsibilities:**
+    Two IAM roles in `iam.tf` split the work:
 
     | Role | Purpose |
     |------|---------|
-    | CodePipeline Role | Orchestrates pipeline, triggers builds |
+    | CodePipeline Role | Orchestrates the pipeline, triggers builds |
     | CodeBuild Role | Executes Terraform, creates AWS resources |
 
 ---
@@ -132,7 +128,7 @@ By the end of this lab, you will:
 
 > **Use the same `user_id` you set in Lab 1.** It is validated against `^user[0-9]{2}$`, and every resource here is prefixed with it — `user07-terraform-repo`, `user07-terraform-pipeline`, and so on. Lab 4's dashboard looks those names up, so a different value breaks it.
 
-5. **Configure Variables**
+3. **Configure Variables**
 
     ```bash
     cp terraform.tfvars.example terraform.tfvars
@@ -145,21 +141,7 @@ By the end of this lab, you will:
     state_bucket_name = "user07-terraform-state-ab12cd"  # ← REPLACE with YOUR actual bucket name from Lab 1 `terraform output state_bucket_name`
     ```
 
-6. **Configure Backend**
-
-    Edit `providers.tf` with your S3 bucket:
-
-    ```hcl
-    backend "s3" {
-      bucket       = "userXX-terraform-state-SUFFIX"
-      key          = "pipeline/terraform.tfstate"
-      region       = "us-east-2"  # change to your assigned staging region if not us-east-2
-      encrypt      = true
-      use_lockfile = true
-    }
-    ```
-
-7. **Deploy Pipeline**
+4. **Deploy Pipeline**
 
     ```bash
     terraform init \
@@ -179,12 +161,12 @@ By the end of this lab, you will:
 
     > **Don't click the `repository_clone_url_http` in a browser** — that's the CodeCommit HTTPS endpoint; it's reachable from `git clone` but a browser hit will prompt for a login. We'll use it via git in Task 3.
 
-8. **Open the Pipeline in the AWS Console**
+5. **Open the Pipeline in the AWS Console**
 
     Navigate manually (Terraform doesn't emit a console URL):
 
     1. AWS Console → **CodePipeline** → **Pipelines**
-    2. Confirm you're in the **staging region** (top-right region picker) — that's where the pipeline lives. The `apply-prod` stage deploys *to* the prod region, but the pipeline itself runs in the staging region.
+    2. Confirm you're in **us-east-2**, your primary region (top-right region picker) — that is where the pipeline itself runs. The Apply-Staging and Apply-Production stages deploy *to* us-east-1 and us-west-2, but the pipeline, the repo and the build projects all live in the primary region.
     3. Click your pipeline (`userXX-terraform-pipeline`, the `pipeline_name` from the output above)
     4. You'll see the 8 stages laid out. They'll currently be in a failed/idle state — the CodeCommit repo is empty, so the source stage has nothing to flow through. Task 3 fixes that.
 
@@ -197,12 +179,12 @@ By the end of this lab, you will:
 > | Name | What it is | Where it lives |
 > |---|---|---|
 > | **`lab3/app-repo/`** | **Source** Terraform code (modules + per-environment wrappers) that ships with the course. You'll copy *from* here. | Subdirectory of the `Advanced_Terraform` GitHub repo you cloned at the start of the course (`~/Advanced_Terraform/lab3/app-repo/`). |
-> | **`userXX-terraform-repo`** | The empty **CodeCommit repository** that Task 2 created. The CodePipeline is wired to watch this repo for pushes. You'll push *to* here. | AWS-side, in your staging region. Listed in the Step 7 output as `repository_clone_url_http = .../repos/userXX-terraform-repo`. |
-> | **`webapp-repo`** | The **local working directory name** you'll give to the `git clone` of `userXX-terraform-repo` in Step 10. Just a folder on your lab EC2 instance — the name doesn't have to match the CodeCommit repo. We put it alongside `lab3/pipeline/` and `lab3/app-repo/` so everything for this lab lives in `~/Advanced_Terraform/lab3/`. | `~/Advanced_Terraform/lab3/webapp-repo/` after Step 10 runs. |
+> | **`userXX-terraform-repo`** | The empty **CodeCommit repository** that Task 2 created. The CodePipeline is wired to watch this repo for pushes. You'll push *to* here. | AWS-side, in your primary region (us-east-2). Listed in the Step 4 output as `repository_clone_url_http = .../repos/userXX-terraform-repo`. |
+> | **`webapp-repo`** | The **local working directory name** you'll give to the `git clone` of `userXX-terraform-repo` in Step 7. Just a folder on your lab EC2 instance — the name doesn't have to match the CodeCommit repo. We put it alongside `lab3/pipeline/` and `lab3/app-repo/` so everything for this lab lives in `~/Advanced_Terraform/lab3/`. | `~/Advanced_Terraform/lab3/webapp-repo/` after Step 7 runs. |
 >
-> **The flow:** clone `userXX-terraform-repo` to local `webapp-repo/` (Step 10) → copy contents of `lab3/app-repo/` into `webapp-repo/` (Step 11) → commit & push from `webapp-repo/` back up to `userXX-terraform-repo` on CodeCommit, which triggers the pipeline.
+> **The flow:** clone `userXX-terraform-repo` to local `webapp-repo/` (Step 7) → copy contents of `lab3/app-repo/` into `webapp-repo/` (Step 8) → commit & push from `webapp-repo/` back up to `userXX-terraform-repo` on CodeCommit, which triggers the pipeline.
 
-9. **Configure Git for CodeCommit**
+6. **Configure Git for CodeCommit**
 
     ```bash
     git config --global credential.helper '!aws codecommit credential-helper $@'
@@ -210,7 +192,7 @@ By the end of this lab, you will:
     ```
     > **Note on `--global`:** AWS documents the credential helper as a global git config because the helper must be available before any clone. This is appropriate in a dedicated lab environment. In a shared workstation where you have multiple git providers, scope this to a `[includeIf "gitdir:~/work/codecommit/"]` block in `~/.gitconfig` instead, or unset both keys at end-of-session: `git config --global --unset credential.helper && git config --global --unset credential.UseHttpPath`.
 
-10. **Clone the empty CodeCommit repository into a local working directory**
+7. **Clone the empty CodeCommit repository into a local working directory**
 
     This clones `userXX-terraform-repo` (the CodeCommit repo) into a new local folder called `webapp-repo/` *inside* the `lab3/` directory — keeping it next to `lab3/pipeline/` and `lab3/app-repo/` so everything related to this lab lives under one roof. The trailing `webapp-repo` argument is just the local folder name — it doesn't change the CodeCommit repo's name on AWS.
 
@@ -223,12 +205,12 @@ By the end of this lab, you will:
     ```
     You should now be in `~/Advanced_Terraform/lab3/webapp-repo/` — an empty git working tree pointing at the CodeCommit repo.
 
-11. **Copy the source Terraform from `lab3/app-repo/` into your clone**
+8. **Copy the source Terraform from `lab3/app-repo/` into your clone**
 
     `lab3/app-repo/` (the course-supplied source) gets copied into `webapp-repo/` (your local clone of the CodeCommit repo). After this step, your CodeCommit clone has real content ready to commit and push.
 
     ```bash
-    # You're in ~/Advanced_Terraform/lab3/webapp-repo/ from Step 10.
+    # You're in ~/Advanced_Terraform/lab3/webapp-repo/ from Step 7.
     cp -r ../app-repo/* .
     ls -la
     ```
@@ -237,19 +219,19 @@ By the end of this lab, you will:
 
     | File | Purpose |
     |------|---------|
-    | `environments/staging/main.tf` | Staging wrapper — `backend "s3"` block + AWS provider (us-east-2) + `module "app"` call with `environment = "staging"`. Exposes `public_ip`, `instance_id`, `vpc_id` outputs. |
-    | `environments/prod/main.tf` | Prod wrapper — same shape, different region (us-west-2), different state key. Same outputs. |
+    | `environments/staging/main.tf` | Staging wrapper — partial `backend "s3"` block + AWS provider (`var.staging_region`, default us-east-1) + `module "app"` call with `environment = "staging"`. Exposes `public_ip`, `instance_id`, `vpc_id` outputs. |
+    | `environments/prod/main.tf` | Prod wrapper — same shape, different region (`var.prod_region`, default us-west-2), different state key. Same outputs. |
     | `modules/app/main.tf` | Shared application module — VPC, public subnet, IGW, route table, route table association, security group, and EC2 instance running Apache. Mirrors the Day 1-2 pattern so the skills carry over directly. |
     | `modules/app/variables.tf` | Module inputs: `user_id`, `environment`, `instance_count` |
     | `modules/app/outputs.tf` | Module outputs: `public_ip`, `instance_id`, `vpc_id`, `api_url` (null for this module — populated by the bonus serverless module instead). |
-    | `modules/app-serverless/` | **Bonus** — Lambda + API Gateway HTTP API. Drop-in replacement for `modules/app/` with the same interface. Used only if you do Task 8. |
+    | `modules/app-serverless/` | **Bonus** — Lambda + API Gateway HTTP API. Drop-in replacement for `modules/app/` with the same interface. Used only in the optional Challenge at the end of this lab. |
 
     > **Why VPC + EC2 (and not just SSM parameters)?** A pipeline lab is most convincing when students can see real infrastructure come up. The deployed stack mirrors what Days 1-2 built — same `aws_vpc` / `aws_subnet` / `aws_security_group` / `aws_instance` shape — so the skills carry over directly. Apache writes a tiny `index.html` tagged with the environment and user ID, and the verification step is a `curl` against the public IP.
 
-12. **Review the directory layout you just copied in**
+9. **Review the directory layout you just copied in**
 
     ```bash
-    # You're in ~/Advanced_Terraform/lab3/webapp-repo/ from Step 11.
+    # You're in ~/Advanced_Terraform/lab3/webapp-repo/ from Step 8.
     pwd
     find environments modules -type f
     ```
@@ -270,9 +252,9 @@ By the end of this lab, you will:
       app-serverless/lambda/index.js
     ```
 
-    > **Two modules, one interface.** Both `modules/app/` (EC2 main path) and `modules/app-serverless/` (bonus) accept the same inputs and expose the same outputs (`public_ip`, `api_url`, `instance_id`, `vpc_id`). For EC2: `public_ip` is set, `api_url` is null. For serverless: it flips. The wrapper outputs surface all four either way, so verification commands don't need to know which module is in use. You'll only touch `app-serverless/` if you do Task 8.
+    > **Two modules, one interface.** Both `modules/app/` (EC2 main path) and `modules/app-serverless/` (bonus) accept the same inputs and expose the same outputs (`public_ip`, `api_url`, `instance_id`, `vpc_id`). For EC2: `public_ip` is set, `api_url` is null. For serverless: it flips. The wrapper outputs surface all four either way, so verification commands don't need to know which module is in use. You'll only touch `app-serverless/` if you do the Challenge.
 
-13. **Read the staging wrapper and the shared module**
+10. **Read the staging wrapper and the shared module**
 
     ```bash
     # Still in ~/Advanced_Terraform/lab3/webapp-repo/
@@ -283,11 +265,11 @@ By the end of this lab, you will:
 
     Things to notice:
 
-    - **`environments/staging/main.tf`** declares the `backend "s3"` block (state lands in your Lab 1 bucket at key `pipeline/staging/terraform.tfstate`), pins the AWS provider region to **us-east-2** (staging region), attaches `default_tags` including `User = "userXX"`, calls `module "app"` with `environment = "staging"`, and re-exposes the module outputs (`public_ip`, `instance_id`, `vpc_id`, `api_url`) so `terraform output public_ip` works from the wrapper.
-    - **`environments/prod/main.tf`** is the same shape — different state key (`pipeline/prod/terraform.tfstate`), different provider region (**us-west-2**), `environment = "prod"`.
+    - **`environments/staging/main.tf`** declares the `backend "s3"` block (state lands in your Lab 1 bucket at key `pipeline/staging/terraform.tfstate`), pins the AWS provider region to **`var.staging_region`** (default us-east-1), attaches `default_tags` including `User = "userXX"`, calls `module "app"` with `environment = "staging"`, and re-exposes the module outputs (`public_ip`, `instance_id`, `vpc_id`, `api_url`) so `terraform output public_ip` works from the wrapper.
+    - **`environments/prod/main.tf`** is the same shape — different state key (`pipeline/prod/terraform.tfstate`), different provider region (**`var.prod_region`**, default us-west-2), `environment = "prod"`.
     - **`modules/app/main.tf`** deploys 7 resources per environment: `aws_vpc` (10.10.0.0/16 for staging, 10.20.0.0/16 for prod — avoids Day 1-2's 192.168.0.0/20), `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association`, `aws_security_group` (HTTP-only), and `aws_instance` (t3.micro running Apache). The `user_data` writes a tiny env-tagged `index.html` so `curl http://<public_ip>` returns proof the right environment deployed.
 
-14. **Check the wrappers — there is nothing to edit**
+11. **Check the wrappers — there is nothing to edit**
 
     Open `environments/staging/main.tf` and read the top of the file:
 
@@ -300,13 +282,13 @@ By the end of this lab, you will:
 
     - The `backend "s3"` block declares only `key`, `encrypt`, and `use_lockfile`. The bucket and its region arrive at `terraform init` time, injected by the pipeline.
     - `provider "aws"` reads `var.staging_region`, which defaults to `us-east-1`.
-    - `module "app"` and the `User` tag both read `var.user_id`, which the pipeline supplies as `TF_VAR_user_id` from the `user_id` you set in Step 5.
+    - `module "app"` and the `User` tag both read `var.user_id`, which the pipeline supplies as `TF_VAR_user_id` from the `user_id` you set in Step 3.
 
     > **Why this matters.** A value that has to be pasted into several files is a value that gets pasted wrong in one of them. The pipeline already knows your ID, your bucket, and its region — so it passes them in, and these files stay identical for every student in the room.
 
     `environments/prod/main.tf` is the same shape, reading `var.prod_region` (default `us-west-2`) instead. **Three regions are now in play:** you work in `us-east-2`, staging deploys to `us-east-1`, production to `us-west-2`. To move an environment somewhere else, change the default on that one variable — nothing else in the repo hardcodes a region.
 
-15. **Push to CodeCommit**
+12. **Push to CodeCommit**
 
     ```bash
     git checkout -b main
@@ -318,13 +300,13 @@ By the end of this lab, you will:
 
 ## Task 4: Deploy to Staging (15 min)
 
-16. **Watch Pipeline Execute**
+13. **Watch Pipeline Execute**
 
     1. Return to the CodePipeline console
     2. Pipeline triggers automatically within 1-2 minutes
     3. Watch it progress through Source → Validate → Plan-Staging
 
-17. **Handle Validate Failure (If Needed)**
+14. **Handle Validate Failure (If Needed)**
 
     If Validate fails due to formatting:
 
@@ -335,7 +317,7 @@ By the end of this lab, you will:
     git commit -m "Fix terraform formatting"
     git push origin main
     ```
-18. **Review Staging Plan**
+15. **Review Staging Plan**
 
     When pipeline reaches **Plan-Staging**:
 
@@ -356,20 +338,20 @@ By the end of this lab, you will:
     - 1 Security Group
     - 1 EC2 Instance
 
-19. **Approve Staging Deployment**
+16. **Approve Staging Deployment**
 
     When pipeline reaches **Approve-Staging**:
 
     1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
     2. In the **Review** dialog, select **Approve** under **Decision**
-    3. Comment: "Reviewed staging plan - creating VPC and EC2 in us-east-2"
+    3. Comment: "Reviewed staging plan - creating VPC and EC2 in us-east-1"
     4. Click **Submit**
 
     > **Why the comment matters.** CodePipeline stores it on the approval and CloudTrail records it. It is the only place the *reason* for a change is recorded, which is exactly what Lab 4's audit queries look for. Don't skip it.
 
     Watch **Apply-Staging** execute. This takes ~2-3 minutes as the VPC and EC2 are created.
 
-20. **Verify Staging Deployment**
+17. **Verify Staging Deployment**
 
     After Apply-Staging completes, get the staging public IP from the staging state. The state lives at key `pipeline/staging/terraform.tfstate` in your Lab 1 bucket — same bucket as Lab 1, separate key.
 
@@ -406,14 +388,14 @@ The pipeline you just deployed hardcodes everything — fine for a lab, dangerou
 
 This task wires both into the existing buildspec so the pipeline can deploy environment-specific config and credentials without anything sensitive landing in source control.
 
-21. **Store a non-sensitive value in Parameter Store**
+18. **Store a non-sensitive value in Parameter Store**
 
     Parameter Store is good for environment-specific config — region, account number, feature-flag toggles, hostnames. Values are visible to anyone with `ssm:GetParameter` and appear in CloudTrail.
 
-    > **Set `$STUDENT` first — do not use `$USER`.** On the lab EC2 box `$USER` is `ec2-user`, not your assigned ID. Step 23 wires the buildspec to `/userXX/lab3/...`, so these paths must match exactly or CodeBuild cannot resolve the value at build start:
+    > **Set `$STUDENT` first — do not use `$USER`.** On the lab EC2 box `$USER` is `ec2-user`, not your assigned ID. Step 20 wires the buildspec to `/userXX/lab3/...`, so these paths must match exactly or CodeBuild cannot resolve the value at build start:
     >
     > ```bash
-    > export STUDENT="userXX"   # your assigned ID — same value as user_id in Step 5
+    > export STUDENT="userXX"   # your assigned ID — same value as user_id in Step 3
     > ```
 
     ```bash
@@ -428,7 +410,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     ```bash
     aws ssm get-parameter --name "/${STUDENT}/lab3/db_host" --query 'Parameter.Value' --output text
     ```
-22. **Store a credential in Secrets Manager**
+19. **Store a credential in Secrets Manager**
 
     Secrets Manager is for values that must NEVER appear in plaintext logs. It encrypts at rest with KMS, supports automatic rotation, and CodeBuild masks the value in build output.
 
@@ -438,7 +420,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
         --description "Lab 3 demo credential — delete at end of lab" \
         --secret-string "demo-password-do-not-reuse"
     ```
-23. **Update the plan-staging buildspec to pull both values**
+20. **Update the plan-staging buildspec to pull both values**
 
     > **Why the *plan* stage, not the apply stage?** The apply stage runs `terraform apply tfplan` against a **saved plan file**, and Terraform refuses to accept variables alongside a saved plan (`Error: Can't set variables when applying a saved plan file`) — a saved plan already contains the variable values that were set when it was created. So the secrets have to be resolved at **plan** time and baked into `tfplan`. This also means the values the approver reviews are the values that get applied.
 
@@ -448,17 +430,19 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     version: 0.2
     env:
       parameter-store:
-        DB_HOST: /userXX/lab3/db_host
+        DB_HOST: /${var.user_id}/lab3/db_host
       secrets-manager:
-        DB_PASSWORD: userXX/lab3/db_password
+        DB_PASSWORD: ${var.user_id}/lab3/db_password
     phases:
       ...
     ```
-    Replace `userXX` with your assigned AWS login ID, the same value you exported as `$STUDENT` in Step 21 and set as `user_id` in Step 5. CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
+    CodeBuild fetches both values at build start, before any command runs; `$DB_HOST` and `$DB_PASSWORD` are then available to every command in `phases:`.
+
+    > **Why `${var.user_id}` and not your own ID typed in?** The buildspec is a Terraform heredoc (`<<-EOF`, not `<<-'EOF'`), so Terraform interpolates `${var.user_id}` before CodeBuild ever sees it. Hardcoding works too, but the variable keeps this file identical for every student — the same reason the wrappers in Step 11 have nothing to edit.
 
     > **This uses the CodeBuild service role, not your IAM user.** The `env:` block is resolved by CodeBuild itself using `aws_iam_role.codebuild` from `lab3/pipeline/iam.tf`. That role grants `ssm:*` and `secretsmanager:GetSecretValue`. If you scope it down later, the `env:` block is the first thing to fail, before any build command runs.
 
-24. **Export the values as `TF_VAR_*` so the plan picks them up**
+21. **Export the values as `TF_VAR_*` so the plan picks them up**
 
     Still in the `plan_staging` buildspec, set the two Terraform variables from the CodeBuild env vars just before the plan runs:
 
@@ -470,13 +454,13 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
           - cd environments/staging
           - export TF_VAR_db_host="$DB_HOST"
           - export TF_VAR_db_password="$DB_PASSWORD"
-          - terraform init
+          - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
           - terraform plan -out=tfplan
           - echo "=== Staging plan complete ==="
     ```
     Terraform reads any `TF_VAR_<name>` environment variable as the value for `variable "<name>"`. **Leave the apply-stage buildspec exactly as it is** — `terraform apply -auto-approve tfplan` already carries these values inside the plan file.
 
-25. **Declare and consume the variables in the staging wrapper**
+22. **Declare and consume the variables in the staging wrapper**
 
     The variables have to be declared in the directory Terraform actually runs in, which is `environments/staging/`, not the repo root. Open `environments/staging/main.tf` in your `webapp-repo` clone and add:
 
@@ -497,17 +481,17 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     # Proves the injection worked: check this parameter in the console after the
     # pipeline runs and you'll see the Parameter Store value that CodeBuild fetched.
     resource "aws_ssm_parameter" "db_config" {
-      name  = "/userXX/staging/db-endpoint"
+      name  = "/${var.user_id}/staging/db-endpoint"
       type  = "String"
       value = var.db_host
     }
     ```
-    Replace `userXX` with your AWS login ID. Two things to notice:
+    Two things to notice:
 
     - **`sensitive = true`** keeps `db_password` out of `terraform plan` output and out of any plaintext output — Terraform prints `(sensitive value)` instead.
     - **The `default = "unset"`** matters. Plan-Production and the Validate stage run against code that has no `TF_VAR_db_*` set; without defaults those stages would fail with "No value for required variable."
 
-26. **Re-apply the pipeline and push the wrapper changes**
+23. **Re-apply the pipeline and push the wrapper changes**
 
     Apply the updated CodeBuild project so the new buildspec takes effect:
 
@@ -523,7 +507,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     git commit -m "Consume pipeline-injected db_host and db_password in staging"
     git push origin main
     ```
-27. **Verify in the Plan-Staging build log**
+24. **Verify in the Plan-Staging build log**
 
     In the browser, open the **plan-staging** build log. In the **Plan-Staging** box, click the action name **Terraform-Plan-Staging**. (Plan, not apply: the `env:` block you added lives in the plan project.)
 
@@ -550,9 +534,9 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Click **Overview** (top right) to return to the pipeline.
 
-28. **Approve staging, then confirm the injected value**
+25. **Approve staging, then confirm the injected value**
 
-    Your push in Step 26 started a new pipeline run, so the pipeline is waiting at **Approve-Staging** again.
+    Your push in Step 23 started a new pipeline run, so the pipeline is waiting at **Approve-Staging** again.
 
     1. In the **Approve-Staging** box, click the action name **Approve-Staging-Deploy**
     2. In the **Review** dialog, select **Approve** under **Decision**
@@ -565,14 +549,18 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     ```bash
     aws ssm get-parameter --name "/${STUDENT}/staging/db-endpoint" \
-        --query 'Parameter.Value' --output text --region us-east-2
+        --query 'Parameter.Value' --output text --region us-east-1
     ```
+    > **Why us-east-1 and not the region you are working in?** That parameter is created by the
+    > *staging wrapper*, so it lands wherever staging deploys. The `/lab3/db_host` parameter you
+    > created by hand in Step 18 is in your primary region. Two parameters, two regions, and the
+    > `--region` flag is the only thing telling them apart.
     **Expected:**
 
     ```
     rds.userXX.example.com
     ```
-    That is the value you stored in Parameter Store in Step 21: CodeBuild fetched it, Terraform received it as `TF_VAR_db_host`, and the apply wrote it into a real resource.
+    That is the value you stored in Parameter Store in Step 18: CodeBuild fetched it, Terraform received it as `TF_VAR_db_host`, and the apply wrote it into a real resource.
 
     > **`ParameterNotFound`?** Apply-Staging has not finished. The parameter is created by the apply, not the plan. Check the pipeline and wait for the **Apply-Staging** box to go green, then re-run the command.
 
@@ -582,7 +570,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 6: Promote to Production (10 min)
 
-29. **Review Production Plan**
+26. **Review Production Plan**
 
     After staging apply completes, the pipeline automatically runs **Plan-Production**:
 
@@ -590,7 +578,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     2. The **Logs** tab opens on the CodeBuild output
     3. Verify it's creating the same 7 resources in **us-west-2**
 
-30. **Approve Production Deployment**
+27. **Approve Production Deployment**
 
     When pipeline reaches **Approve-Production**:
 
@@ -601,9 +589,9 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
     Watch **Apply-Production** execute.
 
-31. **Verify Production Deployment**
+28. **Verify Production Deployment**
 
-    Same flow as Step 20, but reading from the prod state key (`pipeline/prod/...`):
+    Same flow as Step 17, but reading from the prod state key (`pipeline/prod/...`):
 
     ```bash
     aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/prod/terraform.tfstate - --region <bucket-region> | \
@@ -623,97 +611,85 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     <p>Deployed via CI/CD Pipeline</p>
     ```
 
-    Same content as staging, only the `Environment` line differs. **You now have identical infrastructure in two regions**, deployed through an automated pipeline with approval gates.
+    Same content as staging, only the `Environment` line differs.
+
+    **Then confirm both environments in the console.** Switch the region picker to **us-east-1**,
+    then **us-west-2**, and in each one filter EC2 → Instances and VPC → Your VPCs by tag
+    `User = userXX`. Every resource the pipeline built carries that tag, which is how you find your
+    own work in a shared account.
 
 ---
 
-## Task 7: Verify in AWS Console (5 min)
+## Challenge: Promote to Serverless (optional, ~15 min)
 
-32. **Check Your Resources**
+Everything this needs is already in the repo. It is optional — if you are short on time, go
+straight to Task 7 and clean up.
 
-    **Staging (us-east-2):**
+`app-repo/` ships a second module, `modules/app-serverless/`, that accepts the same inputs as
+`modules/app/` and exposes the same outputs, with `api_url` populated instead of `public_ip`.
+Because the two share an interface, swapping the deployed payload from EC2 to Lambda + API Gateway
+is one line per environment — and the pipeline does not change at all.
 
-    1. Switch to us-east-2 region
-    2. EC2 → Instances → Filter by tag: `User = userXX`
-    3. VPC → Your VPCs → Filter by tag: `User = userXX`
+**Part 1 — swap both environments.**
 
-    **Production (us-west-2):**
+In `~/Advanced_Terraform/lab3/webapp-repo`, change exactly one line in
+`environments/staging/main.tf`:
 
-    1. Switch to us-west-2 region
-    2. Repeat the same checks
+```diff
+  module "app" {
+-   source      = "../../modules/app"
++   source      = "../../modules/app-serverless"
+    user_id     = var.user_id
+    environment = "staging"
+  }
+```
+Make the same change in `environments/prod/main.tf`, then commit and push:
 
-    **All resources should be tagged with your AWS login ID** for easy identification in the shared account.
+```bash
+git add environments/staging/main.tf environments/prod/main.tf
+git commit -m "Switch app module to Lambda + API Gateway"
+git push origin main
+```
 
----
+The pipeline triggers automatically. The plan shows roughly **7 to destroy** (VPC, subnet, IGW, RT,
+RTA, SG, EC2) and **~8 to add** (IAM role and policy attachment, log group, Lambda function, API,
+integration, route, stage, permission). Approve both gates.
 
-## Task 8: Bonus — Promote to Serverless (Optional, 15 min)
+**Part 2 — verify the new endpoint.**
 
-> **Skip this task if you're running short on time** — proceed directly to Task 9 (Cleanup). The main lab is complete after Task 7. This bonus task demonstrates that swapping the deployed *payload* (EC2 → Lambda + API Gateway) requires changing **one line per environment** when the modules share an interface — and it gives students who finished early a tangible "modern serverless" experience to compare against the EC2 path.
+`api_url` replaces `public_ip` in the new state:
 
-33. **Swap both environments to the serverless module**
+```bash
+aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region <bucket-region> | \
+    jq -r '.outputs.api_url.value'
 
-    The `app-repo/` ships a second module — `modules/app-serverless/` — that accepts the same inputs (`user_id`, `environment`) and exposes the same outputs (with `api_url` populated instead of `public_ip`). Edit each environment wrapper to point at it:
+curl <staging api_url>
+```
 
-    ```bash
-    # You're cleaning up later — be in the webapp-repo root first.
-    cd ~/Advanced_Terraform/lab3/webapp-repo
-    pwd     # confirm: <...>/lab3/webapp-repo
-    ```
+**Expected:**
 
-    Edit `environments/staging/main.tf` — change exactly **one line**:
+```html
+<h1>Sample Web App (Serverless)</h1>
+<p>Environment: staging</p>
+<p>User: userXX</p>
+<p>Deployed via Lambda + API Gateway HTTP API</p>
+```
 
-    ```diff
-      module "app" {
-    -   source      = "../../modules/app"
-    +   source      = "../../modules/app-serverless"
-        user_id  = "userXX"
-        environment = "staging"
-      }
-    ```
-    Then make the same change in `environments/prod/main.tf`.
+Repeat for prod using `pipeline/prod/terraform.tfstate`.
 
-34. **Commit, push, and verify the serverless deploy**
+> **What this demonstrates.** The Plan-Staging, Apply-Staging, Plan-Production and
+> Apply-Production stages ran identically — only the resources they manage changed. That is the
+> payoff of designing a module interface around a stable contract rather than the technology
+> behind it.
 
-    ```bash
-    git add environments/staging/main.tf environments/prod/main.tf
-    git commit -m "Bonus: switch app module to Lambda + API Gateway"
-    git push origin main
-    ```
-    The pipeline triggers automatically. The plan diff will show roughly **7 resources to destroy (VPC, subnet, IGW, RT, RTA, SG, EC2) and ~8 to add (IAM role + policy attachment, log group, Lambda function, API, integration, route, stage, permission)**. Approve both stages.
+## Task 7: Cleanup (5 min)
 
-    Verify the new endpoint. The `api_url` output replaces `public_ip` in the new state:
+29. **Destroy both environments**
 
-    ```bash
-    aws s3 cp s3://userXX-terraform-state-SUFFIX/pipeline/staging/terraform.tfstate - --region <bucket-region> | \
-        jq -r '.outputs.api_url.value'
-    ```
-    Curl the URL:
-
-    ```bash
-    curl <staging api_url>
-    ```
-    **Expected output:**
-
-    ```html
-    <h1>Sample Web App (Serverless)</h1>
-    <p>Environment: staging</p>
-    <p>User: userXX</p>
-    <p>Deployed via Lambda + API Gateway HTTP API</p>
-    ```
-
-    Same shape as the EC2 path — only the heading and "Deployed via..." line change. Repeat for prod (use `pipeline/prod/terraform.tfstate`).
-
-    > **What you just demonstrated.** Because both modules share an input/output interface, the pipeline didn't need to change at all. The Plan-Staging/Apply-Staging/Plan-Production/Apply-Production stages run identically — only the resources they manage are different. This is the practical payoff of designing module interfaces around stable contracts rather than the underlying technology.
-
----
-
-## Task 9: Cleanup Through Pipeline (Optional but Recommended)
-
-35. **Trigger Destroy**
-
-    The pipeline has no destroy stage. Its eight stages are Source, Validate, Plan-Staging, Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production. Tear down from the CLI instead.
-
-    **Option A: Manual destroy from CLI**
+    **The pipeline cannot do this.** Its eight stages are Source, Validate, Plan-Staging,
+    Approve-Staging, Apply-Staging, Plan-Production, Approve-Production, Apply-Production — there
+    is no destroy stage, and a pipeline that could destroy production on a push is a pipeline
+    nobody should build. Tear down from the CLI instead.
 
     ```bash
     # Destroy staging
@@ -726,11 +702,8 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     terraform init -backend-config="bucket=<your Lab 1 state bucket>" -backend-config="region=<your bucket region>"
     terraform destroy -auto-approve
     ```
-    **Option B: Push a destroy change**
 
-    Edit the Terraform code to remove resources, push, and let pipeline apply the changes.
-
-36. **Verify Cleanup**
+30. **Verify Cleanup**
 
     Verify no instances remain (regardless of whether you ran the bonus or stayed on EC2):
 
@@ -740,7 +713,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
         --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
         --query 'Reservations[*].Instances[*].[InstanceId,Tags[?Key==`Name`].Value|[0]]' \
         --output table \
-        --region us-east-2
+        --region us-east-1
 
     aws ec2 describe-instances \
         --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
@@ -751,17 +724,17 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
     If you ran the Bonus task and deployed Lambda/API Gateway instead, also confirm those are gone:
 
     ```bash
-    aws lambda list-functions --region us-east-2 --query 'Functions[?starts_with(FunctionName, `userXX-`)].FunctionName' --output text
+    aws lambda list-functions --region us-east-1 --query 'Functions[?starts_with(FunctionName, `userXX-`)].FunctionName' --output text
     aws lambda list-functions --region us-west-2 --query 'Functions[?starts_with(FunctionName, `userXX-`)].FunctionName' --output text
     ```
     Both should return empty after destroy.
 
-37. **Delete the Task 5 secret and parameter**
+31. **Delete the Task 5 secret and parameter**
 
     These were created by CLI, not Terraform, so `terraform destroy` does not remove them.
 
     ```bash
-    # $STUDENT was exported in Step 21
+    # $STUDENT was exported in Step 18
     aws secretsmanager delete-secret         --secret-id "${STUDENT}/lab3/db_password"         --force-delete-without-recovery
 
     aws ssm delete-parameter --name "/${STUDENT}/lab3/db_host"
@@ -775,20 +748,21 @@ You have successfully:
 
 - Deployed a CI/CD pipeline for Terraform
 - Pushed **real infrastructure** (VPC + EC2) through the pipeline
-- Deployed to **staging (us-east-2)** and verified
+- Deployed to **staging (us-east-1)** and verified
+- Injected config and a credential at plan time, without either reaching source control
 - Approved and promoted to **production (us-west-2)**
 - Verified both environments with curl
-- Cleaned up resources through the pipeline
+- Tore both environments down from the CLI, and saw why the pipeline cannot do it
 
 ### Key Takeaways
 
 | Concept | What You Experienced |
 |---------|---------------------|
 | **Golden Rule** | Plan saved as artifact, apply uses saved plan |
-| **Multi-region deployment** | Same code deployed to us-east-2 and us-west-2 |
+| **Multi-region deployment** | Same code deployed to us-east-1 and us-west-2, from a pipeline in us-east-2 |
 | **Approval gates** | Manual review before each environment |
 | **Student isolation** | All resources tagged with your AWS login ID |
-| **Full lifecycle** | Create → verify → destroy through pipeline |
+| **Full lifecycle** | Create and verify through the pipeline; destroy from the CLI |
 
 ### Connection to Chapters
 
@@ -796,7 +770,7 @@ You have successfully:
 |--------|----------------|
 | Chapter 1 (State) | Separate state per environment (staging/prod) |
 | Chapter 2 (Import) | Contrast: Import is for existing infra; pipeline is for new infra |
-| Chapter 3 (Pipeline) | Full implementation of 6-stage pattern |
+| Chapter 3 (Pipeline) | Full implementation of the 8-stage pattern |
 
 ---
 
@@ -818,7 +792,7 @@ by another operation after the plan was created.
 
 Each push starts a pipeline execution, and an execution parked at an approval gate keeps its plan file from when the plan stage ran. If a different execution applies to the same environment in the meantime, the parked plan no longer matches the state and the apply refuses it.
 
-This is easy to reach in this lab: Task 4's push and Task 5's push are two executions, and both queue at **Approve-Production**. Approving the older one after the newer one has already applied produces exactly this error.
+This is easy to reach in this lab: Task 3's push and Task 5's push are two executions, and both queue at **Approve-Production**. Approving the older one after the newer one has already applied produces exactly this error.
 
 To recover, run the newest execution instead of the parked one:
 
@@ -854,17 +828,16 @@ Filter by tag: `User = userXX` in the AWS console.
 ## Lab Completion Checklist
 
 - [ ] Deployed pipeline infrastructure (~15 resources)
-- [ ] Cloned CodeCommit repository
-- [ ] Pushed web application Terraform code
-- [ ] Observed pipeline trigger automatically
-- [ ] Reviewed Plan-Staging output (7 resources)
-- [ ] Approved Staging deployment
-- [ ] Verified staging with curl (us-east-2)
-- [ ] Reviewed Plan-Production output (7 resources)
-- [ ] Approved Production deployment
+- [ ] Cloned the CodeCommit repository and pushed the application code
+- [ ] Observed the pipeline trigger automatically
+- [ ] Reviewed Plan-Staging output (7 resources) and approved
+- [ ] Verified staging with curl (us-east-1)
+- [ ] Stored a Parameter Store value and a Secrets Manager credential
+- [ ] Injected both into the plan stage and confirmed the resulting parameter
+- [ ] Reviewed Plan-Production output (7 resources) and approved
 - [ ] Verified production with curl (us-west-2)
-- [ ] Confirmed resources tagged with IAM username
-- [ ] Cleaned up (destroyed) both environments
+- [ ] Confirmed resources tagged with your AWS login ID in both regions
+- [ ] Destroyed both environments and deleted the Task 5 secret and parameter
 
 ---
 
@@ -891,7 +864,7 @@ aws ec2 describe-instances \
     --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
     --query 'Reservations[*].Instances[*].InstanceId' \
     --output text \
-    --region us-east-2
+    --region us-east-1
 
 aws ec2 describe-instances \
     --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \

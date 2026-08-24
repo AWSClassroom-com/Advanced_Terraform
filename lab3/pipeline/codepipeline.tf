@@ -5,6 +5,14 @@ resource "aws_codepipeline" "terraform" {
   name     = "${var.user_id}-terraform-pipeline"
   role_arn = aws_iam_role.codepipeline.arn
 
+  # Pinned deliberately. Leaving this unset makes the pipeline type depend on
+  # whichever provider version each student's `init` happened to resolve --
+  # verified in a class account, two students got V1 and V2 from identical
+  # code. Type changes execution mode, billing, and which CloudWatch metrics
+  # exist, so Lab 4's dashboard would differ per student. V2 publishes
+  # PipelineDuration and FailedPipelineExecutions; V1 publishes neither.
+  pipeline_type = "V2"
+
   artifact_store {
     location = aws_s3_bucket.artifacts.bucket
     type     = "S3"
