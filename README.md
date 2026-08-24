@@ -24,6 +24,8 @@ The top-level `lab1/`, `lab2/`, `lab3/`, `lab4/` folders contain the Terraform *
 | **Lab 3** | [`lab3/`](./lab3/) | Pipeline Operations: CodePipeline + CodeBuild + multi-region promotion (staging → prod) |
 | **Lab 4** | [`lab4/`](./lab4/) | Auditing & Observability: CloudTrail queries + CloudWatch dashboard for Terraform activity |
 
+Complete working code for every lab, including all challenges, is in [**`answers/`**](./answers/) — one folder per lab. Try the lab first.
+
 ## Folder layout
 
 ```

@@ -13,6 +13,7 @@
 | **Terraform** | >= 1.10.0 |
 | **AWS Provider** | `~> 6.0` |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab2/` |
+| **Answers** | [`answers/lab2/`](../answers/lab2/) — complete code, including Step 8's import blocks and the Challenge. Try the lab first. |
 ---
 
 ## Lab Overview
@@ -521,6 +522,9 @@ Four things to work out for yourself:
 - How to turn the hardcoded `vpc_id = "vpc-0abc…"` strings into references, so the file describes
   the dependencies rather than restating today's IDs.
 - Why `tags_all` must go, and what `tags` should say instead.
+
+> **If you get stuck:** `answers/lab2/import/generate-config-demo/generated.tf` is a correct
+> cleanup, with a comment explaining what came out and why.
 
 **Do not run `terraform apply` here.** The resources are already managed by the state you imported
 into in Task 4. Applying would give two states the same nine resources, which is the dual-management

@@ -12,6 +12,7 @@
 | **Prerequisites** | Workspace concepts from Day 2 Chapter 7 (lecture). No prior lab work is needed — you build your own VM in Task 1 and this lab creates its own S3 state bucket. |
 | **Terraform** | >= 1.10.0 |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab1/state-infra/`, `lab1/networking/` (`lab1/directories/` is reference material for the directory-per-environment pattern covered in the lecture) |
+| **Answers** | [`answers/lab1/`](../answers/lab1/) — complete code, including the Challenge. Try the lab first. |
 ---
 
 ## Lab Overview

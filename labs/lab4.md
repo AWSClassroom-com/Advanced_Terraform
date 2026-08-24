@@ -11,6 +11,7 @@
 | **Version** | 2.2 |
 | **Prerequisites** | Labs 1-3 completed; Terraform 1.10+ |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab4/observability/` |
+| **Answers** | [`answers/lab4/`](../answers/lab4/) — reference copy of the dashboard configuration. |
 ---
 
 ## Lab Overview

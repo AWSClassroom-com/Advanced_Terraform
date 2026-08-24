@@ -1,0 +1,12 @@
+# lab1-networking/terraform.tfvars.example
+#
+# Copy this file to terraform.tfvars and set user_id.
+# Defaults for vpc_cidr, public_subnet_cidr, and availability_zone are fine
+# for the lab — only override if you have a CIDR conflict with another student.
+
+user_id = "userxx"   # REPLACE: your assigned ID, e.g. "user07"
+
+# Optional overrides:
+# vpc_cidr           = "10.20.0.0/16"
+# public_subnet_cidr = "10.20.1.0/24"
+# availability_zone  = "us-east-2a"

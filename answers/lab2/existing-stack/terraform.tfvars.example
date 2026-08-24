@@ -1,0 +1,14 @@
+# lab2/existing-stack/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and set user_id to your assigned AWS login ID.
+# All other values have defaults.
+
+user_id = "userxx"   # REPLACE: your assigned AWS login ID (e.g. user07)
+
+# Optional overrides:
+primary_region       = "us-east-2"   # the region you work in
+# vpc_name             = "vpc"
+# vpc_cidr             = "192.168.0.0/20"
+# public_subnet_a_name = "public-subnet-a"
+# public_subnet_a_cidr = "192.168.0.0/24"
+# route_table_name     = "public-route-table"

@@ -1,0 +1,10 @@
+# lab1-directories/staging/terraform.tfvars.example
+#
+# Copy to terraform.tfvars and edit.
+
+user_id           = "userxx"   # REPLACE: your assigned AWS login ID, e.g. user07
+state_bucket_name = "userXX-terraform-state-SUFFIX"   # REPLACE: state_bucket_name output from lab1/state-infra
+
+# Optional overrides:
+# primary_region = "us-east-2"   # the region you work in
+# bucket_region  = "us-east-2"   # the region your state bucket lives in

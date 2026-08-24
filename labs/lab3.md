@@ -12,6 +12,7 @@
 | **Prerequisites** | Lab 1 completed (state bucket created and captured) |
 | **Terraform** | >= 1.10.0 |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab3/pipeline/`, `lab3/app-repo/` |
+| **Answers** | [`answers/lab3/`](../answers/lab3/) — complete code, including the Step 23-24 buildspec. Try the lab first. |
 ---
 
 ## Lab Overview
