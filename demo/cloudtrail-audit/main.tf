@@ -1,7 +1,9 @@
 # demo/cloudtrail-audit/main.tf
 #
 # ONE trail for the whole class. The instructor applies this once, before
-# Lab 4 starts; students never run it.
+# Lab 1 starts; students never run it. It has to be running before the labs
+# begin, not before Lab 4 -- a trail only records what happens after it
+# exists, and Lab 4 Task 2 queries the Lab 1-3 activity.
 #
 # Why one shared trail and not one per student: CloudTrail allows a maximum
 # of 5 trails per Region and that quota cannot be increased. A class of 15

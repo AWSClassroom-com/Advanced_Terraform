@@ -1,7 +1,7 @@
 # demo/cloudtrail-audit/outputs.tf
 
 output "log_group_name" {
-  description = "Log group students select in Logs Insights for Lab 4 Task 2."
+  description = "Log group students select in Log Analytics for Lab 4 Task 2."
   value       = aws_cloudwatch_log_group.trail.name
 }
 
