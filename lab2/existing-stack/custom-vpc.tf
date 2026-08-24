@@ -47,9 +47,16 @@ resource "aws_internet_gateway" "igw" {
 }
 
 # NAT gateway left out — nothing in Lab 2 needs one, and it bills by the hour.
+#
+# If you do add one, this is the current shape: a REGIONAL NAT gateway, which
+# expands across AZs on its own and takes vpc_id rather than subnet_id. It needs
+# AWS provider >= 6.24.0 (the release that added `availability_mode`).
+#
 # resource "aws_nat_gateway" "ngw" {
-#   allocation_id = aws_eip.nat.id
-#   subnet_id     = aws_subnet.subnet-a.id
+#   vpc_id            = aws_vpc.custom-vpc.id
+#   availability_mode = "regional"
+#   connectivity_type = "public"
+#   depends_on        = [aws_internet_gateway.igw]
 #   tags = {
 #     Name = "${var.user_id}-ngw"
 #   }
