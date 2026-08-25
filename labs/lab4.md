@@ -5,10 +5,10 @@
 | | |
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
-| **Chapter** | Enterprise Operations |
-| **Duration** | 30 minutes |
+| **Chapter** | Auditing Terraform Operations |
+| **Duration** | 35 minutes |
 | **Difficulty** | Advanced |
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Prerequisites** | Labs 1-3 completed; Terraform 1.10+ |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab4/observability/` |
 | **Answers** | [`answers/lab4/`](../answers/lab4/) — reference copy of the dashboard configuration. |
@@ -28,17 +28,17 @@ You need to demonstrate:
 - **Pipeline vs. manual distinction** -- prove production changes flow through the pipeline
 - **Ongoing monitoring** -- a dashboard the SOC team can review anytime
 
-    This lab closes that gap.
+This lab closes that gap.
 
-    ### Learning Objectives
+### Learning Objectives
 
-    By the end of this lab, you will:
+By the end of this lab, you will:
 
-    - Query CloudTrail Event History to identify Terraform API calls
-    - Distinguish pipeline-initiated changes from manual console/CLI activity
-    - Build reusable CloudWatch Log Analytics queries for audit reporting
-    - Deploy a CloudWatch dashboard for operational visibility
-    - Articulate how Labs 1-4 form a complete SOC 2-ready Terraform workflow
+- Query CloudTrail Event History to identify Terraform API calls
+- Distinguish pipeline-initiated changes from manual console/CLI activity
+- Build reusable CloudWatch Log Analytics queries for audit reporting
+- Deploy a CloudWatch dashboard for operational visibility
+- Articulate how Labs 1-4 form a complete SOC 2-ready Terraform workflow
 
 ---
 
@@ -297,7 +297,7 @@ Queries answer specific questions. Your ops team needs an always-on dashboard.
     Edit `terraform.tfvars` and set all three required variables:
 
     ```hcl
-    region            = "us-east-2"                        # Whatever region your instructor assigned
+    primary_region    = "us-east-2"                        # Whatever region your instructor assigned
     user_id           = "user07"                           # Same value you used as user_id in Labs 1 and 3
     state_bucket_name = "user07-terraform-state-ab12cd"    # Exact bucket name from Lab 1 outputs
     ```
@@ -391,16 +391,6 @@ Check the `SOURCE` line is still there and still names `/aws/cloudtrail/advanced
 
 ---
 
-## Knowledge Check
-
-**Q1.** How do you tell whether a Terraform-originated change came through the pipeline or from someone's laptop?
-*A: Inspect `userIdentity.arn` (the CodeBuild assumed-role for pipeline activity; your instance role or IAM user for manual activity) and `userAgent` (`Terraform/...` from the pipeline; `aws-cli/...` from a shell). `sourceIPAddress` is a weaker signal, because it reports where the SDK call was made from rather than which service orchestrated it.*
-
-**Q2.** A CloudTrail event shows `userIdentity.arn = arn:...:assumed-role/userXX-codebuild-terraform-role/apply-staging`. How do you trace it back to the human who triggered the change?
-*A: Note the `eventTime`. In CodePipeline, find the execution that ran during that window (the `apply-staging` action specifically). From the pipeline execution, follow back to the source revision (CodeCommit commit). The commit author is the human responsible.*
-
-**Q3.** Why monitor S3 state bucket `PutRequests` on the dashboard?
-*A: S3 `GetRequests` correspond to `terraform plan` (reading state). S3 `PutRequests` correspond to `terraform apply` (writing state). A `PutRequest` to the state bucket without a corresponding pipeline execution in the same window is a strong signal that someone applied Terraform manually — exactly what SOC 2 wants prevented.*
 
 ---
 
