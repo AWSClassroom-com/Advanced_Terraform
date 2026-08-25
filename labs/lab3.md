@@ -685,6 +685,47 @@ Repeat for prod using `pipeline/prod/terraform.tfstate`.
 > payoff of designing a module interface around a stable contract rather than the technology
 > behind it.
 
+## Challenge: Put a Linter in the Validate Stage (optional, ~10 min)
+
+The Validate stage checks formatting and structure. A linter catches a different class of
+mistake: declared-but-unused values, deprecated syntax, dead code. This challenge adds
+**tflint** to the stage and then proves the gate actually gates.
+
+**Part 1 — wire it in.** In `lab3/pipeline/codebuild.tf`, extend the `validate` project's
+buildspec: install tflint in the `install` phase, run it against `environments/staging` and
+`environments/prod` in the `build` phase, then apply the pipeline and start a run with
+**Release change**.
+
+**Success condition:** the Validate stage **fails on its first run, on code this lab shipped** —
+read the finding before you fix anything. The variable it names is injected by the pipeline and
+consumed by design only at plan time, so the honest fix is not deleting it. Annotate it:
+
+```hcl
+# tflint-ignore: terraform_unused_declarations  # injected by the pipeline; plan-time only
+```
+
+Push the annotation, and Validate goes green.
+
+**Part 2 — prove the gate works.** Add an unused variable to the staging wrapper, with no
+annotation, and push.
+
+**Success condition:** the pipeline stops in Validate and the log names your variable. Remove it,
+push, and the run goes green end to end.
+
+Two things to work out for yourself:
+
+- Which buildspec phase installs tools and which one runs checks — and that the working
+  directory carries over from one `build` command to the next.
+- Why the annotation is the right fix here and deleting the variable is not. Step 21 is the
+  reason.
+
+> **If you get stuck:** the install line is
+> `curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash`,
+> and `tflint --call-module-type=none` keeps the lint scoped to the wrapper directory itself.
+> The full buildspec is in `answers/lab3/pipeline/codebuild.tf`.
+
+---
+
 ## Task 7: Cleanup (5 min)
 
 29. **Destroy both environments**

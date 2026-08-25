@@ -60,6 +60,7 @@ variable "db_host" {
   default     = "unset"
 }
 
+# tflint-ignore: terraform_unused_declarations  # injected by the pipeline; plan-time only (Challenge)
 variable "db_password" {
   description = "Database password injected from Secrets Manager via the pipeline."
   type        = string

@@ -78,6 +78,9 @@ resource "aws_codebuild_project" "validate" {
             - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
             - yum -y install terraform
             - terraform version
+            - echo "=== Installing tflint (Challenge) ==="
+            - curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+            - tflint --version
         build:
           commands:
             - echo "=== Running terraform fmt check ==="
@@ -89,6 +92,9 @@ resource "aws_codebuild_project" "validate" {
             - cd ../prod
             - terraform init -backend=false
             - terraform validate
+            - echo "=== Running tflint (Challenge) ==="
+            - cd ../staging && tflint --call-module-type=none
+            - cd ../prod && tflint --call-module-type=none
             - echo "=== All validations passed ==="
     EOF
   }
