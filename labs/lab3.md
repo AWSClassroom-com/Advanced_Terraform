@@ -104,10 +104,12 @@ By the end of this lab, you will:
     ```bash
     # plan-stage buildspec
     terraform plan -out=tfplan
+    terraform show -no-color tfplan > tfplan.txt
 
     # apply-stage buildspec, after the manual approval
     terraform apply -auto-approve tfplan
     ```
+    > **Why write `tfplan.txt`?** The plan's console output lives in a build log that expires; the text rendering travels in the pipeline's artifact bundle next to the plan that was approved, so the record of what was approved outlives the build.
 
     This is the **Golden Rule of Terraform automation**: the plan stage produces a binary plan
     artifact, and the apply stage executes **that exact artifact** instead of re-planning. The
@@ -456,6 +458,7 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
           - export TF_VAR_db_password="$DB_PASSWORD"
           - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
           - terraform plan -out=tfplan
+          - terraform show -no-color tfplan > tfplan.txt
           - echo "=== Staging plan complete ==="
     ```
     Terraform reads any `TF_VAR_<name>` environment variable as the value for `variable "<name>"`. **Leave the apply-stage buildspec exactly as it is** — `terraform apply -auto-approve tfplan` already carries these values inside the plan file.

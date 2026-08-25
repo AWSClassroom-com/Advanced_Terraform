@@ -153,10 +153,12 @@ resource "aws_codebuild_project" "plan_staging" {
             - cd environments/staging
             - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform plan -out=tfplan
+            - terraform show -no-color tfplan > tfplan.txt
             - echo "=== Staging plan complete ==="
       artifacts:
         files:
           - environments/staging/tfplan
+          - environments/staging/tfplan.txt
           - environments/staging/.terraform/**/*
           - environments/staging/.terraform.lock.hcl
           - modules/**/*
@@ -290,10 +292,12 @@ resource "aws_codebuild_project" "plan_prod" {
             - cd environments/prod
             - terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$BUCKET_REGION"
             - terraform plan -out=tfplan
+            - terraform show -no-color tfplan > tfplan.txt
             - echo "=== Production plan complete ==="
       artifacts:
         files:
           - environments/prod/tfplan
+          - environments/prod/tfplan.txt
           - environments/prod/.terraform/**/*
           - environments/prod/.terraform.lock.hcl
           - modules/**/*
