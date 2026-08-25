@@ -12,7 +12,7 @@
 | **Prerequisites** | Workspace concepts from Day 2 Chapter 7 (lecture). No prior lab work is needed — you build your own VM in Task 1 and this lab creates its own S3 state bucket. |
 | **Terraform** | >= 1.10.0 |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab1/state-infra/`, `lab1/networking/` (`lab1/directories/` is reference material for the directory-per-environment pattern covered in the lecture) |
-| **Answers** | [`answers/lab1/`](../answers/lab1/) — complete code, including the Challenge. Try the lab first. |
+| **Answers** | [`answers/lab1/`](../answers/lab1/) — complete code, including the Challenges. Try the lab first. |
 ---
 
 ## Lab Overview
@@ -709,6 +709,40 @@ then read it from the application state.
 > **outputs**, not its resources. An output is the interface between two states, and Part 2 is what
 > changing that interface actually costs: the producing state has to be applied before the
 > consuming state can see the new value.
+
+---
+
+## Challenge 2: An Ephemeral Feature Workspace (optional, ~5 min)
+
+The guard you built in Task 3 allows more than `dev`, `staging`, and `prod`: any workspace named
+`feature-*` also passes. That is the pattern for short-lived environments — one per branch or
+experiment, destroyed when the work merges.
+
+Run the full lifecycle in `lab1/state-infra`, on both sides of the guard.
+
+**Part 1 — prove the guard says no.** Create a workspace named `hotfix` and run `terraform plan`.
+
+**Success condition:** the plan fails with the guard's own error message, before anything is
+planned. Delete the workspace afterwards.
+
+**Part 2 — a compliant workspace, created and destroyed.** Create `feature-demo`, materialize its
+state file, confirm the file exists in the bucket, then tear the workspace down completely.
+
+**Success condition:** `aws s3 ls "s3://$BUCKET/env:/" --recursive` shows an
+`env:/feature-demo/` state file while the workspace exists, and after the teardown both the state
+file and the workspace are gone.
+
+Two things to work out for yourself:
+
+- How to write a state file to S3 without creating any resources. The Bonus Task did exactly this,
+  for exactly the same reason: a real `apply` here would collide on the bucket name.
+- What `terraform workspace delete` requires before it will run, and what it does to the state
+  file in S3.
+
+> **If you get stuck:** the Bonus Task's `-refresh-only` sequence is the first half of the answer.
+> For the second half, `terraform workspace delete` refuses to delete the workspace you are
+> standing in, and refuses a non-empty state without `-force` — an empty state deletes cleanly and
+> takes its S3 object with it.
 
 ---
 

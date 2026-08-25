@@ -1,6 +1,6 @@
 # Lab 1 answers
 
-Complete code for **Multi-Environment State Strategy**, including the Challenge.
+Complete code for **Multi-Environment State Strategy**, including the Challenges.
 
 Everything except the two files below is identical to what ships in `lab1/`.
 
@@ -35,3 +35,28 @@ aws ssm get-parameter --name "/<your user_id>/dev/app-config" \
     --query 'Parameter.Value' --output text
 ```
 Both CIDR blocks should appear in the JSON.
+## Challenge 2 — the ephemeral feature workspace
+
+No files change for this one; it is a command sequence. From `lab1/state-infra`:
+
+```bash
+# Part 1 - the guard says no
+terraform workspace new hotfix
+terraform plan                       # fails: Workspace 'hotfix' is not allowed
+terraform workspace select dev
+terraform workspace delete hotfix
+
+# Part 2 - full lifecycle of a compliant workspace
+BUCKET=$(terraform output -raw state_bucket_name)
+terraform workspace new feature-demo
+terraform apply -refresh-only -auto-approve   # materializes the state file, creates nothing
+aws s3 ls "s3://$BUCKET/env:/" --recursive    # env:/feature-demo/... listed
+
+terraform workspace select dev
+terraform workspace delete feature-demo       # empty state deletes cleanly
+aws s3 ls "s3://$BUCKET/env:/" --recursive    # feature-demo object gone
+```
+
+`workspace delete` refuses the workspace you are standing in, and refuses a non-empty state
+without `-force`. The empty state deletes cleanly and removes its S3 object with it — the whole
+environment existed and vanished without a single resource being created.
