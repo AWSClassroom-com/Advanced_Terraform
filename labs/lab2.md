@@ -6,7 +6,7 @@
 |---|---|
 | **Course** | Terraform on AWS (300-Level) |
 | **Chapter** | Importing Existing Infrastructure into Terraform |
-| **Duration** | 45 minutes |
+| **Duration** | 50 minutes |
 | **Difficulty** | Advanced |
 | **Version** | 4.0 (9-resource import, S3 intentionally excluded) |
 | **Prerequisites** | Lab 1 completed (workspaces, S3 backend with `use_lockfile`) |
