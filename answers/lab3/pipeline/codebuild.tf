@@ -95,6 +95,10 @@ resource "aws_codebuild_project" "validate" {
             - echo "=== Running tflint (Challenge) ==="
             - cd ../staging && tflint --call-module-type=none
             - cd ../prod && tflint --call-module-type=none
+            - echo "=== Running terraform test (Challenge) ==="
+            - cd ../../modules/app
+            - terraform init -backend=false
+            - terraform test
             - echo "=== All validations passed ==="
     EOF
   }

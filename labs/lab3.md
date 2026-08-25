@@ -726,6 +726,65 @@ Two things to work out for yourself:
 
 ---
 
+## Challenge: Prove the Guardrail Rejects Bad Input (optional, ~10 min)
+
+`fmt`, `validate` and a linter all read the code. None of them can tell you whether a rule you
+wrote actually works. `modules/app/` declares `user_id` with a `^user[0-9]{2}$` validation whose
+only job is to reject the `userXX` placeholder before it reaches AWS, and `environment` with a
+validation that accepts only `staging` or `prod`. Nothing in this lab proves either one fires.
+`terraform test` is the check for that.
+
+**Part 1 — write the test.** Create `modules/app/tests/validation.tftest.hcl`. It needs a
+`variables` block holding a valid `user_id` and `environment`, then two `run` blocks that each
+override one of them with a bad value: `user_id = "userXX"` in the first, `environment = "qa"` in
+the second. Each run declares `expect_failures` naming the variable whose validation should reject
+it. Run it from the module directory:
+
+```bash
+cd ~/Advanced_Terraform/lab3/webapp-repo/modules/app
+terraform init -backend=false
+terraform test
+```
+
+**Expected:**
+
+```
+tests/validation.tftest.hcl... in progress
+  run "rejects_the_placeholder"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/validation.tftest.hcl... tearing down
+tests/validation.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+```
+
+**Success condition:** both runs pass, and each passed because Terraform raised the error it was
+told to expect. Notice what the test file does not contain and what the run did not need: there is
+no provider block, no credentials were used, and nothing was planned against AWS. A failed variable
+validation stops the run before a provider is ever configured.
+
+**Part 2 — put it in the gate.** Extend the `validate` project's buildspec in
+`lab3/pipeline/codebuild.tf` to run the test, apply the pipeline, and push. Then weaken the
+`user_id` regex in `modules/app/variables.tf` so that `userXX` would satisfy it, and push again.
+
+**Success condition:** the Validate stage fails on `rejects_the_placeholder`, reporting
+`Missing expected failure` — the variable was expected to report an error and did not. Restore
+the regex and push, and the stage goes green. Nothing else in the stage catches that edit,
+because a weakened regex is still perfectly valid HCL.
+
+Two things to work out for yourself:
+
+- Why `expect_failures` takes a variable address rather than the text of the error message.
+- Which directory the buildspec is sitting in when the validate commands finish, and what that
+  makes the path to `modules/app`.
+
+> **If you get stuck:** `expect_failures` takes a list, and the address it wants is
+> `var.user_id` — the variable, not the message it produces. The full test file is in
+> `answers/lab3/app-repo/modules/app/tests/`, and the buildspec in
+> `answers/lab3/pipeline/codebuild.tf`.
+
+---
+
 ## Task 7: Cleanup (5 min)
 
 29. **Destroy both environments**
