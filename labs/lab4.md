@@ -11,7 +11,7 @@
 | **Version** | 2.3 |
 | **Prerequisites** | Labs 1-3 completed; Terraform 1.10+ |
 | **Lab Files** | [github.com/AWSClassroom-com/Advanced_Terraform](https://github.com/AWSClassroom-com/Advanced_Terraform) → `lab4/observability/` |
-| **Answers** | [`answers/lab4/`](../answers/lab4/) — reference copy of the dashboard configuration. |
+| **Answers** | [`answers/lab4/`](../answers/lab4/) — reference copy of the dashboard configuration, plus the Challenge answer. |
 ---
 
 ## Lab Overview
@@ -363,6 +363,39 @@ When the auditor arrives, you can demonstrate:
 - **Access Control:** Production deploys use a dedicated IAM role with least-privilege — not individual user credentials (Lab 3 + this lab's CloudTrail check).
 - **State Integrity:** Encrypted (`encrypt = true`), versioned (S3 versioning), and locked (S3 native locking) state files (Lab 1).
 - **Monitoring:** CloudWatch dashboard provides continuous visibility (this lab).
+
+---
+
+## Challenge: Catch a Manual Change (optional, ~10 min)
+
+Everything so far watched changes that came through Terraform. This one makes you the person the
+audit is looking for.
+
+**Part 1 — create drift, then detect it.** In the CloudWatch console, open your
+`userXX-terraform-operations` dashboard, move or resize any widget, and save. Then, from
+`lab4/observability`, prove the dashboard no longer matches the code — without reading a diff.
+
+**Success condition:** `terraform plan -detailed-exitcode; echo $?` prints `2` after your console
+edit, and `0` again after you put the dashboard back the way the code says it should be.
+
+**Part 2 — find yourself in the audit trail.** In CloudTrail Event history, find every
+`PutDashboard` event for your dashboard.
+
+**Success condition:** the same dashboard shows changes by **two different identities**, and you
+can say which was which. Then say where the **third** identity from this course — the pipeline
+role — would appear, and why it is not in these events.
+
+Two things to work out for yourself:
+
+- What exit code `2` means for this command, and why "changes present" is exactly what a scheduled
+  drift check wants to fail on.
+- Which `userIdentity.type` a console click produces, compared with the `terraform apply` you ran
+  from the EC2 instance. Task 2's queries showed the shape for the pipeline; this is the shape for
+  a person.
+
+> **If you get stuck:** the revert is just `terraform apply` — the code is the record of what the
+> dashboard should be, so applying it puts the console edit back. For Part 2, filter Event history
+> on **Event name** = `PutDashboard` and open each event's `userIdentity`.
 
 ---
 
