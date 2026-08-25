@@ -117,7 +117,7 @@ resource "aws_codepipeline" "terraform" {
   # =========================================================================
   # Stage 5: Apply Staging
   # =========================================================================
-  # Applies the approved plan to staging environment (us-east-2)
+  # Applies the approved plan to staging environment (us-east-1)
 
   stage {
     name = "Apply-Staging"
