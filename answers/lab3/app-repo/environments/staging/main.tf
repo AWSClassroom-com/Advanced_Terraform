@@ -51,6 +51,30 @@ variable "staging_region" {
 # To switch to the serverless bonus module, change `source` to
 # "../../modules/app-serverless" and re-push. The interface is identical
 # so no other changes are required here.
+# Lab 3 Step 22: declare the variables the pipeline injects as TF_VAR_db_host
+# and TF_VAR_db_password, and prove the injection worked by writing the
+# non-secret one into a real resource.
+variable "db_host" {
+  description = "Database hostname injected from Parameter Store via the pipeline."
+  type        = string
+  default     = "unset"
+}
+
+variable "db_password" {
+  description = "Database password injected from Secrets Manager via the pipeline."
+  type        = string
+  sensitive   = true
+  default     = "unset"
+}
+
+# Proves the injection worked: check this parameter in the console after the
+# pipeline runs and you'll see the Parameter Store value that CodeBuild fetched.
+resource "aws_ssm_parameter" "db_config" {
+  name  = "/${var.user_id}/staging/db-endpoint"
+  type  = "String"
+  value = var.db_host
+}
+
 module "app" {
   source      = "../../modules/app"
   user_id     = var.user_id

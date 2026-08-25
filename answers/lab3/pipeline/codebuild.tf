@@ -139,7 +139,7 @@ resource "aws_codebuild_project" "plan_staging" {
 
   source {
     type = "CODEPIPELINE"
-    # Lab 3 Steps 23 and 24: secrets are resolved at PLAN time, not apply time.
+    # Lab 3 Steps 20-21: secrets are resolved at PLAN time, not apply time.
     # `terraform apply tfplan` refuses variables alongside a saved plan, so the
     # values have to be baked into tfplan while it is being created.
     #
