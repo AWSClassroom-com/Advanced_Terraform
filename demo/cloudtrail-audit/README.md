@@ -56,9 +56,40 @@ Two advanced event selectors:
 > `Terraform-InstanceRole`, and the policy that role carries (`TerraformPowerUser`) has **no
 > CloudTrail permissions at all** — `terraform apply` fails with `AccessDenied` on `CreateTrail`.
 > That is deliberate: the role is shared with every student, and `cloudtrail:*` would let anyone
-> in the class call `StopLogging` or `DeleteTrail`. Run this from CloudShell, or from a machine
-> configured with your own administrator credentials, where your IAM user's permissions apply
-> instead of the instance role's.
+> in the class call `StopLogging` or `DeleteTrail`. Run it somewhere your own administrator
+> identity applies instead.
+
+Either of these works. Both end up in the same place, so pick whichever is less friction on the day.
+
+**Option A — your own workstation.** If you already have Terraform installed and a profile for the
+classroom account, this is one command:
+
+```bash
+git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
+cd Advanced_Terraform/demo/cloudtrail-audit
+export AWS_PROFILE=<your classroom profile>
+```
+
+**Option B — CloudShell.** Open CloudShell from the console toolbar, in the region the class
+deploys to. It runs as *you*, so no credentials to configure. It does **not** ship Terraform, so
+install it once — `$HOME` survives between CloudShell sessions, so this is a one-time cost per
+region:
+
+```bash
+mkdir -p ~/bin
+curl -sS -o /tmp/tf.zip https://releases.hashicorp.com/terraform/1.15.9/terraform_1.15.9_linux_amd64.zip
+unzip -q -o /tmp/tf.zip -d ~/bin
+echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc && export PATH=$HOME/bin:$PATH
+terraform version
+
+git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
+cd Advanced_Terraform/demo/cloudtrail-audit
+```
+
+> **CloudShell's `$HOME` persists, everything else does not.** The 1 GB home directory survives, so
+> `~/bin/terraform` and the cloned repo are both still there next session — including the local
+> state file this demo depends on. Anything you install outside `$HOME` is gone when the session
+> ends. Home is also per-region, so a different region means installing again.
 
 State is **local on purpose**. The instructor applies this once per cohort, so there is no shared state to coordinate and no chicken-and-egg with Lab 1's state bucket. There is no backend block and no `-backend-config` to pass.
 

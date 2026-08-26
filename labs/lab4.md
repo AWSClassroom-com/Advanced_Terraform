@@ -463,16 +463,32 @@ Check the `SOURCE` line is still there and still names `/aws/cloudtrail/advanced
 
 ## Cleanup
 
-When your instructor confirms, destroy in reverse order:
+When your instructor confirms, destroy in reverse order. This is the only full teardown in the
+course - Lab 3's Task 7 released the hourly costs and deliberately left the pipeline standing for
+this lab.
+
+> **If you run out of time, skip this.** The classroom account is deleted after class, so nothing
+> here survives the day either way.
 
 ```bash
 # Lab 4
 cd ~/Advanced_Terraform/lab4/observability && terraform destroy
 ```
 ```bash
-# Lab 3 — destroy app-repo environments first if they're still up
-cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging && terraform destroy
-cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod && terraform destroy
+# Lab 3 — skip the two environments if you already ran Lab 3's Task 7.
+# The pipeline injected these on every build; from your own shell you set them yourself,
+# and these directories have never been initialised outside CodeBuild.
+export TF_VAR_user_id="userXX"
+
+cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging
+terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your bucket region>"
+terraform destroy -auto-approve
+
+cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod
+terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your bucket region>"
+terraform destroy -auto-approve
+
+# The pipeline last, now that nothing is left for it to watch.
 cd ~/Advanced_Terraform/lab3/pipeline && terraform destroy
 ```
 ```bash

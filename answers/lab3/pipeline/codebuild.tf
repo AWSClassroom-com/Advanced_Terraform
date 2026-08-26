@@ -81,9 +81,8 @@ resource "aws_codebuild_project" "validate" {
         install:
           commands:
             - echo "=== Installing Terraform ==="
-            - yum install -y yum-utils
-            - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-            - yum -y install terraform
+            - curl -sS -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${var.terraform_version}/terraform_${var.terraform_version}_linux_amd64.zip
+            - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
             - terraform version
             - echo "=== Installing tflint (Challenge) ==="
             - curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
@@ -173,9 +172,8 @@ resource "aws_codebuild_project" "plan_staging" {
       phases:
         install:
           commands:
-            - yum install -y yum-utils
-            - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-            - yum -y install terraform
+            - curl -sS -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${var.terraform_version}/terraform_${var.terraform_version}_linux_amd64.zip
+            - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
         build:
           commands:
             - echo "=== Planning staging environment ==="
@@ -249,9 +247,8 @@ resource "aws_codebuild_project" "apply_staging" {
       phases:
         install:
           commands:
-            - yum install -y yum-utils
-            - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-            - yum -y install terraform
+            - curl -sS -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${var.terraform_version}/terraform_${var.terraform_version}_linux_amd64.zip
+            - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
         build:
           commands:
             - echo "=== Applying to staging environment ==="
@@ -314,9 +311,8 @@ resource "aws_codebuild_project" "plan_prod" {
       phases:
         install:
           commands:
-            - yum install -y yum-utils
-            - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-            - yum -y install terraform
+            - curl -sS -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${var.terraform_version}/terraform_${var.terraform_version}_linux_amd64.zip
+            - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
         build:
           commands:
             - echo "=== Planning production environment ==="
@@ -388,9 +384,8 @@ resource "aws_codebuild_project" "apply_prod" {
       phases:
         install:
           commands:
-            - yum install -y yum-utils
-            - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-            - yum -y install terraform
+            - curl -sS -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${var.terraform_version}/terraform_${var.terraform_version}_linux_amd64.zip
+            - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
         build:
           commands:
             - echo "=== Applying to production environment ==="

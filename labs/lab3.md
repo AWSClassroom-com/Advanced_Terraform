@@ -99,6 +99,7 @@ By the end of this lab, you will:
     ```bash
     grep -A2 'terraform plan -out' codebuild.tf
     grep -A2 'terraform apply' codebuild.tf
+    grep -A2 'install:' codebuild.tf | head -6
     ```
 
     ```bash
@@ -110,6 +111,19 @@ By the end of this lab, you will:
     terraform apply -auto-approve tfplan
     ```
     > **Why write `tfplan.txt`?** The plan's console output lives in a build log that expires; the text rendering travels in the pipeline's artifact bundle next to the plan that was approved, so the record of what was approved outlives the build.
+
+    Notice the `install:` phase downloads a **pinned** Terraform binary rather than installing
+    from a package repository.
+
+    > **Why pin the version, and why a download?** A CodeBuild container is destroyed at the end of
+    > every build, so nothing installed in one build survives into the next. All five projects
+    > install Terraform on every run, and there is no cache to fall back on. Two things follow.
+    > First, the install has to be fast, because you pay for it five times per pipeline execution:
+    > fetching the binary takes about a second, where a package-manager install took about ninety.
+    > Second, and more important, `yum install terraform` gives you whatever version is current that
+    > morning. A pipeline that upgrades Terraform on its own, mid-class or mid-release, is a
+    > pipeline whose builds are not reproducible. The version lives in `var.terraform_version`, so
+    > upgrading is a deliberate edit in one place.
 
     This is the **Golden Rule of Terraform automation**: the plan stage produces a binary plan
     artifact, and the apply stage executes **that exact artifact** instead of re-planning. The
@@ -852,6 +866,10 @@ Two things to work out for yourself:
     aws ssm delete-parameter --name "/${STUDENT}/lab3/db_host"
     ```
 
+    > **The pipeline stays up.** You have released everything that costs money by the hour. Lab 4
+    > builds a dashboard that watches this pipeline, so leave it standing - the full teardown is the
+    > last section of Lab 4.
+
 ---
 
 ## Lab Complete!
@@ -953,44 +971,6 @@ Filter by tag: `User = userXX` in the AWS console.
 
 ---
 
-
-## End of Day: Complete Cleanup
-
-> **Not yet if Lab 4 is still to come.** Step 3 below destroys the pipeline, and Lab 4 builds a
-> dashboard that watches it — its Quick Links widget points straight at
-> `userXX-terraform-pipeline`. Run Task 7 above to release the EC2 and RDS costs, leave the
-> pipeline standing, and come back here after Lab 4. Lab 4's own Cleanup section covers the same
-> ground in the right order.
-
-```bash
-# 1. Destroy web application (staging)
-cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging
-terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your-bucket-region>"
-terraform destroy -auto-approve
-
-# 2. Destroy web application (prod)
-cd ~/Advanced_Terraform/lab3/webapp-repo/environments/prod
-terraform init -backend-config="bucket=userXX-terraform-state-SUFFIX" -backend-config="region=<your-bucket-region>"
-terraform destroy -auto-approve
-
-# 3. Destroy pipeline infrastructure
-cd ~/Advanced_Terraform/lab3/pipeline
-terraform destroy -auto-approve
-
-# 4. Verify no running instances
-aws ec2 describe-instances \
-    --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
-    --query 'Reservations[*].Instances[*].InstanceId' \
-    --output text \
-    --region us-east-1
-
-aws ec2 describe-instances \
-    --filters "Name=tag:User,Values=userXX" "Name=instance-state-name,Values=running" \
-    --query 'Reservations[*].Instances[*].InstanceId' \
-    --output text \
-    --region us-west-2
-```
----
 
 ## Additional Resources
 

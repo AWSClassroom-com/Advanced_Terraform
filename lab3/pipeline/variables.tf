@@ -1,6 +1,23 @@
 # variables.tf
 # Input variables for Lab 3 pipeline infrastructure
 
+variable "terraform_version" {
+  description = <<-EOT
+    Terraform version the pipeline installs. Every CodeBuild container is thrown away
+    at the end of a build, so each of the five projects installs Terraform from scratch
+    on every run. Downloading the pinned binary takes about a second; installing it from
+    the HashiCorp yum repo took about ninety, and gave whatever version was latest that
+    morning - so a pipeline could change Terraform under a running class.
+  EOT
+  type        = string
+  default     = "1.15.9"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.terraform_version))
+    error_message = "terraform_version must be an exact version such as 1.15.9, not a constraint."
+  }
+}
+
 variable "user_id" {
   description = "Your assigned AWS login ID (for example user07) — the same value you used in Lab 1"
   type        = string
