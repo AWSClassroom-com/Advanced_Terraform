@@ -956,6 +956,12 @@ Filter by tag: `User = userXX` in the AWS console.
 
 ## End of Day: Complete Cleanup
 
+> **Not yet if Lab 4 is still to come.** Step 3 below destroys the pipeline, and Lab 4 builds a
+> dashboard that watches it — its Quick Links widget points straight at
+> `userXX-terraform-pipeline`. Run Task 7 above to release the EC2 and RDS costs, leave the
+> pipeline standing, and come back here after Lab 4. Lab 4's own Cleanup section covers the same
+> ground in the right order.
+
 ```bash
 # 1. Destroy web application (staging)
 cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging

@@ -19,6 +19,8 @@ plan.out
 
 # Generated config (terraform plan -generate-config-out=...)
 generated.tf
+# ...except the answer key's cleaned copy, which the Lab 2 Challenge points at.
+!answers/**/generated.tf
 
 # OS / editor cruft
 .DS_Store
