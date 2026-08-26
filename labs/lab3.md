@@ -780,10 +780,12 @@ Two things to work out for yourself:
   makes the path to `modules/app`.
 
 > **If you get stuck:** `expect_failures` takes a list, and the address it wants is
-> `var.user_id` — the variable, not the message it produces. Drop `mock_provider` and the run
-> fails before it reaches your validations, because the AWS provider authenticates as soon as it
-> is configured. The full test file is in `answers/lab3/app-repo/modules/app/tests/`, and the
-> buildspec in `answers/lab3/pipeline/codebuild.tf`.
+> `var.user_id` — the variable, not the message it produces. Drop `mock_provider` and the test
+> still passes here, because the instance role hands the real AWS provider credentials; run it
+> somewhere without them and it fails at provider configuration instead of reaching your
+> validations. That is what the mock buys: a check that does not care whether it can reach AWS.
+> The full test file is in `answers/lab3/app-repo/modules/app/tests/`, and the buildspec in
+> `answers/lab3/pipeline/codebuild.tf`.
 
 ---
 
@@ -797,6 +799,11 @@ Two things to work out for yourself:
     nobody should build. Tear down from the CLI instead.
 
     ```bash
+    # The pipeline injected TF_VAR_user_id on every build. This is the first time you
+    # run Terraform against these environments from your own shell, so set it yourself
+    # or the plan fails on the userXX placeholder before it reaches the destroy.
+    export TF_VAR_user_id="userXX"
+
     # Destroy staging
     cd ~/Advanced_Terraform/lab3/webapp-repo/environments/staging
     terraform init -backend-config="bucket=<your Lab 1 state bucket>" -backend-config="region=<your bucket region>"

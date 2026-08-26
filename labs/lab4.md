@@ -92,10 +92,28 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     > **Why does the role name find nothing?** **User name** matches the *session*, not the role, and CodeBuild names a session `AWSCodeBuild-<build id>` that changes every build. Task 2 filters on `userIdentity.arn`, which does hold the role.
 
     **Filter 3: SSM Parameter Changes**
+
+    Switch the console's region to **us-east-1** before this one. Lab 3's pipeline writes its
+    parameter from the staging wrapper, and staging deploys to us-east-1.
+
+    Give yourself a second identity to compare against by writing one parameter by hand in that
+    same region:
+
+    ```bash
+    aws ssm put-parameter --region us-east-1 \
+        --name "/userXX/staging/audit-check" --type String --value "by hand" --overwrite
+    ```
+
     - Lookup attribute: **Event name**
     - Value: `PutParameter`
 
-    These come from Lab 1's locking demo and, if you completed Task 5, from the pipeline as well. Keep this result on screen for the next step.
+    Keep this result on screen for the next step.
+
+    > **Why change region for this filter?** Event history is per-region, and it records the region
+    > the API call was made in, not the region you deployed the pipeline from. Lab 1's locking demo
+    > wrote its parameters in us-east-2; the pipeline wrote its one in us-east-1 because that is
+    > where staging lives. A multi-region pipeline scatters its audit trail the same way, which is
+    > the argument for a multi-region trail over Event history.
 
     > **If you see no events:** check the time range selector first, which defaults to a narrow window. Event history keeps 90 days of management events, so everything from Labs 1-3 is still there. Widen the range and search again. Newly created events also take up to 15 minutes to appear, which only matters if you re-run something during this lab.
 
@@ -108,7 +126,8 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     | `AWSCodeBuild-<build id>` | Lab 3's pipeline |
     | `i-<instance id>` | you, running the CLI on the lab EC2 instance |
 
-    Click an event whose **User name** starts with **`AWSCodeBuild-`**, then **View event**.
+    Click an event whose **User name** starts with **`AWSCodeBuild-`**, then **View event**. Both
+    identities are in us-east-1's Event history, which is why the previous step sent you there.
 
     **Key fields for auditors:**
 

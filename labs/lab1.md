@@ -644,9 +644,15 @@ Optional — skip if you're short on time. This task gives you a concrete look a
     # 2. Switch to prod and force terraform to write the workspace's state
     #    file out to S3. -refresh-only doesn't create or change any resources;
     #    it just rewrites state, which materializes the prod state object.
-    terraform workspace select prod
+    terraform workspace select -or-create prod
     terraform apply -refresh-only -auto-approve
     ```
+
+    > **Why `-or-create` and not `select`?** The workspaces you made in Step 8 lived in the local
+    > backend. Step 12 migrated state to S3, and an S3 backend derives its workspace list from the
+    > `env:/` prefixes that actually exist in the bucket — so only `dev`, the one you had applied,
+    > came across. `terraform workspace list` shows `default` and `dev` and nothing else.
+    > `-or-create` creates `prod` if it is missing and selects it if it is not.
     ```bash
     # 3. List every state file in your bucket
     aws s3 ls "s3://$BUCKET/env:/" --recursive
@@ -766,6 +772,7 @@ The state bucket you created in Step 11 is a **bootstrap resource** — it holds
     terraform state rm aws_s3_bucket_versioning.terraform_state
     terraform state rm aws_s3_bucket_server_side_encryption_configuration.terraform_state
     terraform state rm aws_s3_bucket_public_access_block.terraform_state
+    terraform state rm aws_s3_bucket_metric.entire_bucket
     terraform state rm random_string.suffix
     ```
 25. **Destroy the rest**
