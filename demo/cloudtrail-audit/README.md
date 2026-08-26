@@ -52,6 +52,14 @@ Two advanced event selectors:
 
 ## Deploy
 
+> **Not from the deploy VM.** Terraform running on the classroom VM authenticates as
+> `Terraform-InstanceRole`, and the policy that role carries (`TerraformPowerUser`) has **no
+> CloudTrail permissions at all** — `terraform apply` fails with `AccessDenied` on `CreateTrail`.
+> That is deliberate: the role is shared with every student, and `cloudtrail:*` would let anyone
+> in the class call `StopLogging` or `DeleteTrail`. Run this from CloudShell, or from a machine
+> configured with your own administrator credentials, where your IAM user's permissions apply
+> instead of the instance role's.
+
 State is **local on purpose**. The instructor applies this once per cohort, so there is no shared state to coordinate and no chicken-and-egg with Lab 1's state bucket. There is no backend block and no `-backend-config` to pass.
 
 ```bash
