@@ -2,9 +2,13 @@
 # Challenge answer - proves the module's two input validations actually reject
 # bad values, which fmt, validate and tflint cannot tell you.
 #
-# There is no provider block and no credentials are needed. A failed variable
-# validation stops the run before a provider is ever configured, which is why
-# this check belongs in the Validate stage rather than in Plan.
+# mock_provider stands in for the real AWS provider, so this test needs no
+# credentials and no region - it checks the configuration and never talks to a
+# cloud. That is why the check belongs in the Validate stage and not in Plan.
+# Without it, the AWS provider authenticates at configure time and the test
+# fails before it ever reaches the validations.
+
+mock_provider "aws" {}
 
 # Defaults for every run. Each run below overrides exactly one of them.
 variables {

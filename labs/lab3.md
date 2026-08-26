@@ -734,11 +734,12 @@ only job is to reject the `userXX` placeholder before it reaches AWS, and `envir
 validation that accepts only `staging` or `prod`. Nothing in this lab proves either one fires.
 `terraform test` is the check for that.
 
-**Part 1 — write the test.** Create `modules/app/tests/validation.tftest.hcl`. It needs a
-`variables` block holding a valid `user_id` and `environment`, then two `run` blocks that each
-override one of them with a bad value: `user_id = "userXX"` in the first, `environment = "qa"` in
-the second. Each run declares `expect_failures` naming the variable whose validation should reject
-it. Run it from the module directory:
+**Part 1 — write the test.** Create `modules/app/tests/validation.tftest.hcl`. It needs three
+things: `mock_provider "aws" {}`, so the test never authenticates to AWS; a `variables` block
+holding a valid `user_id` and `environment`; and two `run` blocks that each override one of them
+with a bad value — `user_id = "userXX"` in the first, `environment = "qa"` in the second. Each run
+declares `expect_failures` naming the variable whose validation should reject it. Run it from the
+module directory:
 
 ```bash
 cd ~/Advanced_Terraform/lab3/webapp-repo/modules/app
@@ -759,9 +760,9 @@ Success! 2 passed, 0 failed.
 ```
 
 **Success condition:** both runs pass, and each passed because Terraform raised the error it was
-told to expect. Notice what the test file does not contain and what the run did not need: there is
-no provider block, no credentials were used, and nothing was planned against AWS. A failed variable
-validation stops the run before a provider is ever configured.
+told to expect. Notice what the run did not need: no credentials, no region, and nothing planned
+against AWS. `mock_provider` stands in for the real provider, so the test reads the configuration
+and never talks to a cloud.
 
 **Part 2 — put it in the gate.** Extend the `validate` project's buildspec in
 `lab3/pipeline/codebuild.tf` to run the test, apply the pipeline, and push. Then weaken the
@@ -779,9 +780,10 @@ Two things to work out for yourself:
   makes the path to `modules/app`.
 
 > **If you get stuck:** `expect_failures` takes a list, and the address it wants is
-> `var.user_id` — the variable, not the message it produces. The full test file is in
-> `answers/lab3/app-repo/modules/app/tests/`, and the buildspec in
-> `answers/lab3/pipeline/codebuild.tf`.
+> `var.user_id` — the variable, not the message it produces. Drop `mock_provider` and the run
+> fails before it reaches your validations, because the AWS provider authenticates as soon as it
+> is configured. The full test file is in `answers/lab3/app-repo/modules/app/tests/`, and the
+> buildspec in `answers/lab3/pipeline/codebuild.tf`.
 
 ---
 
