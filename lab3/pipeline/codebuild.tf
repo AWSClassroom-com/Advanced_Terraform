@@ -16,6 +16,13 @@ resource "random_string" "artifacts_suffix" {
 resource "aws_s3_bucket" "artifacts" {
   bucket = "${var.user_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
 
+  # Versioning is enabled below, so every pipeline run leaves object versions
+  # here. Without this, `terraform destroy` on the pipeline fails with
+  # BucketNotEmpty. The state bucket is emptied by hand during cleanup on
+  # purpose - that lesson is worth teaching once, not twice on plumbing the
+  # student never touches.
+  force_destroy = true
+
   tags = {
     Name = "${var.user_id}-pipeline-artifacts-${random_string.artifacts_suffix.result}"
   }

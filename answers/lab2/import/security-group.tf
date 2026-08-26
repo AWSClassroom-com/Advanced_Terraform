@@ -19,8 +19,7 @@ resource "aws_security_group" "allow-http-ssh" {
   }
 
   lifecycle {
-    # Will be added in a later step; commented for now so the initial import succeeds.
-    # Once imported and verified, uncomment to protect against accidental destroy.
+    # Task 5: active. Comment this out again before the Lab 2 destroy.
     prevent_destroy = true
   }
 }
