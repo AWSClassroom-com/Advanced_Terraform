@@ -69,8 +69,6 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     2. Search for **CloudTrail**.
     3. Click **Event history** in the left sidebar.
 
-    > **AccessDenied on the CloudTrail Dashboard is expected.** That page needs permissions this account does not grant. Click **Event history**; it works normally.
-
 2. **Filter for Terraform Activity**
 
     Try these filters one at a time. Each filter uses CloudTrail Event history's **Lookup attributes**:
