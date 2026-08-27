@@ -58,6 +58,30 @@ Advanced_Terraform/
   ```
 - **Tags:** every resource gets a `Name` tag prefixed with `${var.user_id}-`.
 
+### Pinned tool versions
+
+The Lab 3 pipeline installs two tools into every CodeBuild container, both pinned in
+`lab3/pipeline/variables.tf`:
+
+| Variable | Default | Why it is pinned |
+|---|---|---|
+| `terraform_version` | `1.15.9` | Plan and Apply run in separate containers with a human approval between them. If each installed "latest", a release landing in that window makes Apply a different version from Plan, and a saved plan file cannot be read across versions. |
+| `tflint_version` | `0.64.0` | The upstream `install_linux.sh` is being withdrawn on 1 September 2026. A build that pipes it stops working on that date. |
+
+**Being behind is fine; being *unknowingly* behind is not.** Old Terraform and tflint
+releases stay downloadable indefinitely, so a stale pin keeps working — it just drifts from
+what `yum install terraform` puts on the student's VM. Check both before a cohort:
+
+```bash
+grep -A12 'variable "terraform_version"' lab3/pipeline/variables.tf | grep default
+curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | grep '"tag_name"'
+
+grep -A12 'variable "tflint_version"' lab3/pipeline/variables.tf | grep default
+curl -s https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep '"tag_name"'
+```
+
+Bumping is a one-line edit to each default. Nothing else references either version.
+
 ## Per-module setup
 
 ```bash
