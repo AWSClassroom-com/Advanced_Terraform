@@ -54,7 +54,7 @@ By the end of this lab, you will:
 |---------|----------------|
 | **CloudTrail** | Records every AWS API call -- immutable audit trail |
 | **User Agent** | Terraform sends a `Terraform/<version>` token in user agent — distinguishes from console |
-| **Source IP** | An AWS-owned public address for pipeline calls vs. your instance's public IP for calls made by hand - the weakest of the three |
+| **Source IP** | Varies by service even within one pipeline run - private, public, a service principal, or `AWS Internal`. The weakest of the three |
 | **userIdentity.arn** | Names the role that signed the call: the CodeBuild role for pipeline work, the EC2 instance role for anything run by hand |
 
 ---
@@ -135,10 +135,19 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     |-------|---------|-------------------|
     | `userIdentity.arn` | `arn:aws:sts::<account>:assumed-role/userXX-codebuild-terraform-role/<session>` | Which CodeBuild role was active for this call |
     | `userAgent` | A string containing `APN/1.0 HashiCorp/1.0 Terraform/1.10.x` | Confirms a Terraform-originated operation |
-    | `sourceIPAddress` | A public address either way - AWS-owned when Terraform ran inside CodeBuild, your instance's when it ran from the lab EC2 instance | Weak signal on its own; see the note below |
+    | `sourceIPAddress` | For this event, public either way - AWS-owned from CodeBuild, your instance's from the lab VM. Other services differ | Weak signal on its own; see the note below |
     | `eventTime` | `2026-05-03T14:33:45Z` | Exact UTC timestamp |
 
-    > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, not which service orchestrated it. A CodeBuild project with no `vpc_config` - like this one - runs in AWS-managed networking, so its calls arrive from an AWS-owned **public** address such as `52.15.247.209`, not from `codebuild.amazonaws.com` and not from a private `10.x`. Put the same project in a VPC and the S3 calls start arriving from `10.x` while the rest still do not, which is exactly why this field is unreliable. For telling pipeline activity from manual activity, `userIdentity.arn` and `userAgent` are the fields to trust.
+    > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, and for one pipeline it takes four different shapes. Counted across a single run of this pipeline, all under the same CodeBuild role:
+    >
+    > | Service | What the field held |
+    > |---|---|
+    > | `s3` | A **private** `10.x` — the build container's own address |
+    > | `ssm`, `ec2`, `sts`, `lambda` | A **public** AWS-owned address, e.g. `52.15.247.209` |
+    > | `kms` | `fas.s3.amazonaws.com` — a service principal, not an address |
+    > | `logs` | The literal string `AWS Internal` |
+    >
+    > S3 keeps the private address because those calls take a VPC endpoint that preserves it; everything else is source-NATed on the way out. So "the pipeline shows a private IP" and "the pipeline shows a public IP" are both true, depending which call you happened to open. **That is the point: this field cannot tell you who did something.** `userIdentity.arn` and `userAgent` can.
 4. **Compare the same action run by hand**
 
     Go back to the **PutParameter** results and open an event whose **User name** starts with **`i-`**. Same API call, same day, run from your lab instance instead of the pipeline. Select both events and choose **Compare event details** to see them side by side.
