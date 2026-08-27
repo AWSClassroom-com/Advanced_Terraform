@@ -169,12 +169,16 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     ```
     SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
-    fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+    fields eventTime, eventName, userIdentity.arn, sourceIPAddress
     | filter userAgent like /Terraform/
-    | sort @timestamp desc
+    | sort eventTime desc
     | limit 50
     ```
     Line 1 is doing the work that a dropdown used to do. `SOURCE` names the log group inside the query and sets the window, so there is nothing to pick and no time range to set. The rest returns the 50 most recent events whose user agent contains "Terraform" — everything any Terraform binary did, whichever principal ran it.
+
+    > **Why `eventTime` and not `@timestamp`?** `@timestamp` is when CloudTrail delivered the
+    > batch to CloudWatch, so a whole batch of events shares one value to the millisecond and
+    > sorting on it orders nothing. `eventTime` is when the API call actually happened.
 
     > **Where this log group came from.** Event history is not a log group and cannot be queried here. Delivering to CloudWatch Logs needs a **trail**, which your instructor created for the class. It captures data events too.
 
@@ -182,13 +186,13 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     **Expected result** (one row per event, sample):
 
-    | @timestamp | eventName | userIdentity.arn | sourceIPAddress |
+    | eventTime | eventName | userIdentity.arn | sourceIPAddress |
     |---|---|---|---|
     | 2026-05-14 15:42:11 | PutParameter | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
     | 2026-05-14 15:42:09 | CreateLogGroup | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
     | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/user07 | 52.x.x.x |
 
-    The mix is what you want to see. Most rows should carry a `codebuild-terraform-role` ARN, meaning pipeline-driven. A row carrying `Terraform-InstanceRole` means someone ran Terraform by hand from the lab instance, which is the anomaly the audit story is built around.
+    The mix is what you want to see. **Most rows carry `Terraform-InstanceRole`** — that is you, running Terraform on the lab instance, and every `plan` or `apply` emits dozens of S3 data events. The `codebuild-terraform-role` rows are the pipeline's, and they are rarer because the pipeline only runs when you push. Telling the two apart is the whole point: in a real account, work on production should look like the second group, not the first.
 
 6. **Run the same kind of query from the CLI**
 
@@ -200,10 +204,10 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     QID=$(aws logs start-query --region us-east-2 \
         --start-time $(( $(date +%s) - 43200 )) --end-time $(date +%s) \
         --query-string 'SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
-    fields @timestamp, eventName, requestParameters.key, userIdentity.arn
+    fields eventTime, eventName, requestParameters.key, userIdentity.arn
     | filter eventSource = "s3.amazonaws.com"
     | filter requestParameters.bucketName = "userXX-terraform-state-SUFFIX"
-    | sort @timestamp desc
+    | sort eventTime desc
     | limit 20' \
         --query queryId --output text)
 
@@ -233,11 +237,11 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     QID=$(aws logs start-query --region us-east-2 \
         --start-time $(( $(date +%s) - 43200 )) --end-time $(date +%s) \
         --query-string 'SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
-    fields @timestamp, eventName, requestParameters.name
+    fields eventTime, eventName, requestParameters.name
     | filter eventSource = "ssm.amazonaws.com"
     | filter eventName in ["PutParameter", "DeleteParameter"]
     | filter requestParameters.name like /userXX/
-    | sort @timestamp desc
+    | sort eventTime desc
     | limit 20' \
         --query queryId --output text)
 
@@ -247,7 +251,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     **Expected result** (sample):
 
-    | @timestamp | eventName | requestParameters.name |
+    | eventTime | eventName | requestParameters.name |
     |---|---|---|
     | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
     | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
@@ -262,9 +266,9 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     aws logs put-query-definition --region us-east-2 \
         --name "userXX-terraform-activity-cli" \
         --log-group-names "/aws/cloudtrail/advanced-terraform" \
-        --query-string 'fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+        --query-string 'fields eventTime, eventName, userIdentity.arn, sourceIPAddress
     | filter userAgent like /Terraform/
-    | sort @timestamp desc
+    | sort eventTime desc
     | limit 50'
     ```
     > **Saved queries are not private.** CloudWatch stores them per Region, not per user, so everyone with access sees them all. Hence the user ID in the name.
@@ -473,6 +477,15 @@ this lab.
 ```bash
 # Lab 4
 cd ~/Advanced_Terraform/lab4/observability && terraform destroy
+
+# Saved queries and CodeBuild log groups are not Terraform-managed, so destroy leaves them.
+for Q in $(aws logs describe-query-definitions --region us-east-2 \n        --query "queryDefinitions[?starts_with(name,'userXX')].queryDefinitionId" --output text); do
+    aws logs delete-query-definition --region us-east-2 --query-definition-id "$Q"
+done
+
+for G in $(aws logs describe-log-groups --region us-east-2 \n        --query "logGroups[?contains(logGroupName,'userXX')].logGroupName" --output text); do
+    aws logs delete-log-group --region us-east-2 --log-group-name "$G"
+done
 ```
 ```bash
 # Lab 3 — skip the two environments if you already ran Lab 3's Task 7.
@@ -492,13 +505,11 @@ terraform destroy -auto-approve
 cd ~/Advanced_Terraform/lab3/pipeline && terraform destroy
 ```
 ```bash
-# Lab 2 — skip if you already ran Lab 2's own cleanup (Steps 26-27)
+# Lab 2 — skip if you already ran Lab 2's own cleanup (Steps 18-20)
 cd ~/Advanced_Terraform/lab2/import && terraform destroy
 ```
 ```bash
-# Lab 1 — the networking and directories stacks, if you skipped Lab 1's Steps 32-34
-cd ~/Advanced_Terraform/lab1/directories/dev && terraform destroy
-cd ~/Advanced_Terraform/lab1/directories/staging && terraform destroy
+# Lab 1 — the networking stack, if you skipped Lab 1's Steps 24-27
 cd ~/Advanced_Terraform/lab1/networking && terraform destroy
 ```
 ```bash

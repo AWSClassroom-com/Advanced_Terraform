@@ -1,6 +1,6 @@
 # lab1-directories
 
-Directory-structure pattern as the contrast to workspaces in Lab 1 Part D.
+Directory-structure pattern as the contrast to workspaces in Lab 1 Task 4.
 
 ## Layout
 

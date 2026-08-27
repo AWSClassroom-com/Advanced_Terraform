@@ -5,13 +5,13 @@
 
 exports.handler = async (event) => {
     const env = process.env.ENVIRONMENT || "unknown";
-    const student = process.env.STUDENT_ID || "unknown";
+    const user = process.env.USER_ID || "unknown";
     return {
         statusCode: 200,
         headers: { "Content-Type": "text/html" },
         body: `<h1>Sample Web App (Serverless)</h1>
 <p>Environment: ${env}</p>
-<p>Student: ${student}</p>
+<p>User: ${user}</p>
 <p>Deployed via Lambda + API Gateway HTTP API</p>`
     };
 };

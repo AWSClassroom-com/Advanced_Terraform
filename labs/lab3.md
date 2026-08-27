@@ -166,7 +166,7 @@ By the end of this lab, you will:
     terraform plan
     terraform apply
     ```
-    Review the plan, then type `yes` at the apply prompt. Expected: ~15 resources (CodeCommit, CodeBuild projects, CodePipeline, IAM roles, S3 artifacts bucket).
+    Review the plan, then type `yes` at the apply prompt. Expected: 14 resources (CodeCommit, CodeBuild projects, CodePipeline, IAM roles, S3 artifacts bucket).
 
     **Note the outputs.** You'll use the CodeCommit clone URL in Task 3, and the pipeline name to find your pipeline in the AWS Console at the next step:
 
@@ -205,6 +205,11 @@ By the end of this lab, you will:
     ```bash
     git config --global credential.helper '!aws codecommit credential-helper $@'
     git config --global credential.UseHttpPath true
+
+    # Without these, your first commit still succeeds but prints a nine-line warning
+    # about guessing your identity from the hostname.
+    git config --global user.name "userXX"
+    git config --global user.email "userXX@example.com"
     ```
     > **Note on `--global`:** AWS documents the credential helper as a global git config because the helper must be available before any clone. This is appropriate in a dedicated lab environment. In a shared workstation where you have multiple git providers, scope this to a `[includeIf "gitdir:~/work/codecommit/"]` block in `~/.gitconfig` instead, or unset both keys at end-of-session: `git config --global --unset credential.helper && git config --global --unset credential.UseHttpPath`.
 
@@ -587,6 +592,12 @@ This task wires both into the existing buildspec so the pipeline can deploy envi
 
 ## Task 6: Promote to Production (10 min)
 
+> **Two executions, one gate.** Your Step 12 push and your Step 23 push are separate pipeline
+> executions, and both queue at **Approve-Production**. The one holding the gate is the older
+> of the two — check the commit message in the stage box. Approve it, let Apply-Production
+> finish, then **reject** the execution behind it rather than approving it: its plan was made
+> before this apply, so it would be refused as stale.
+
 26. **Review Production Plan**
 
     After staging apply completes, the pipeline automatically runs **Plan-Production**:
@@ -669,7 +680,7 @@ git push origin main
 ```
 
 The pipeline triggers automatically. The plan shows roughly **7 to destroy** (VPC, subnet, IGW, RT,
-RTA, SG, EC2) and **~8 to add** (IAM role and policy attachment, log group, Lambda function, API,
+RTA, SG, EC2) and **9 to add** (IAM role and policy attachment, log group, Lambda function, API,
 integration, route, stage, permission). Approve both gates.
 
 **Part 2 — verify the new endpoint.**
@@ -710,8 +721,8 @@ buildspec: install tflint in the `install` phase, run it against `environments/s
 `environments/prod` in the `build` phase, then apply the pipeline and start a run with
 **Release change**.
 
-**Success condition:** the Validate stage **fails on its first run, on code this lab shipped** —
-read the finding before you fix anything. The variable it names is injected by the pipeline and
+**Success condition:** the Validate stage **fails on its first run, on code you added in
+Step 22** — read the finding before you fix anything. The variable it names is injected by the pipeline and
 consumed by design only at plan time, so the honest fix is not deleting it. Annotate it:
 
 ```hcl
@@ -957,7 +968,7 @@ Filter by tag: `User = userXX` in the AWS console.
 
 ## Lab Completion Checklist
 
-- [ ] Deployed pipeline infrastructure (~15 resources)
+- [ ] Deployed pipeline infrastructure (14 resources)
 - [ ] Cloned the CodeCommit repository and pushed the application code
 - [ ] Observed the pipeline trigger automatically
 - [ ] Reviewed Plan-Staging output (7 resources) and approved

@@ -3,7 +3,7 @@
 # Backend stores the "networking" state at a fixed key (no workspace prefix).
 # Application state in lab1-state-infra reads VPC outputs from this state via
 # the terraform_remote_state data source — that's the cross-state dependency
-# pattern Lab 1 Part C teaches.
+# pattern Lab 1 Task 4 teaches.
 #
 # A backend block cannot read variables, so the bucket and its region are
 # supplied at init time instead of being written here:

@@ -2,7 +2,7 @@
 # State infrastructure: S3 bucket for state storage
 #
 # This is the "bootstrap" configuration. These resources are created with
-# local state first, then we migrate to remote state in Part B.
+# local state first, then we migrate to remote state in Step 12.
 #
 # Note: Terraform now uses S3 native locking (use_lockfile = true) instead
 # of DynamoDB, so we only need the S3 bucket.
@@ -104,11 +104,11 @@ resource "aws_ssm_parameter" "lock_demo" {
 }
 
 # ============================================================================
-# PART D: Cross-state dependency — read VPC info from lab1/networking state
+# TASK 4: Cross-state dependency — read VPC info from lab1/networking state
 # ============================================================================
 # Both the data source and the app_config resource use `count` so they are
 # NO-OPS until the student sets `state_bucket_name` in terraform.tfvars
-# (Part C Step 19). During Part A this whole block is skipped — terraform
+# (Step 18). Until then this whole block is skipped — terraform
 # plan/apply succeeds without it.
 # ----------------------------------------------------------------------------
 
@@ -137,7 +137,7 @@ locals {
 }
 
 # Application resource that uses networking outputs. Gated on the cross-state
-# data source so Part A doesn't try to create this before lab1/networking
+# data source so the first apply doesn't try to create this before lab1/networking
 # has been deployed.
 resource "aws_ssm_parameter" "app_config" {
   count = local.cross_state_enabled ? 1 : 0

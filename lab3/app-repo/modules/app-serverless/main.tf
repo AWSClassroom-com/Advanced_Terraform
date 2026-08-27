@@ -9,7 +9,7 @@
 # HTTP API. No VPC, no EC2 instance-hours, cost ~$0 under free tier (1M
 # Lambda requests + 1M API Gateway requests per month free).
 #
-# Resources created (8):
+# Resources created (9):
 #   1. aws_iam_role (Lambda execution)
 #   2. aws_iam_role_policy_attachment (CloudWatch logs)
 #   3. aws_cloudwatch_log_group (Lambda logs, 7-day retention)
@@ -69,7 +69,7 @@ resource "aws_lambda_function" "greeter" {
 
   environment {
     variables = {
-      STUDENT_ID  = var.user_id
+      USER_ID     = var.user_id
       ENVIRONMENT = var.environment
     }
   }

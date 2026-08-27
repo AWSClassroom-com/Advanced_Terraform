@@ -3,7 +3,7 @@
 # The shared application module. Both dev/ and staging/ instantiate this
 # with different `environment` values. Reads VPC info from the networking
 # state via terraform_remote_state — same pattern as the workspace-based
-# Lab 1 Part C, just sourced from an explicit variable instead of workspace.
+# Lab 1 Task 4, just sourced from an explicit variable instead of workspace.
 
 data "terraform_remote_state" "networking" {
   backend = "s3"

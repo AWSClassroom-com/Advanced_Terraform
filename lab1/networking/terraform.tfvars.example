@@ -4,7 +4,7 @@
 # Defaults for vpc_cidr, public_subnet_cidr, and availability_zone are fine
 # for the lab — only override if you have a CIDR conflict with another student.
 
-user_id = "userxx"   # REPLACE: your assigned ID, e.g. "user07"
+user_id = "userxx" # REPLACE: your assigned ID, e.g. "user07"
 
 # Optional overrides:
 # vpc_cidr           = "10.20.0.0/16"

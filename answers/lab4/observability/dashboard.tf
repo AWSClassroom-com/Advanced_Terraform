@@ -233,25 +233,28 @@ resource "aws_cloudwatch_dashboard" "terraform_ops" {
 
             **All Terraform activity (last 12 hours)**
             ```
-            fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+            SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
+            fields eventTime, eventName, userIdentity.arn, sourceIPAddress
             | filter userAgent like /Terraform/
-            | sort @timestamp desc | limit 50
+            | sort eventTime desc | limit 50
             ```
 
             **SSM parameter changes for ${var.user_id}**
             ```
-            fields @timestamp, eventName, requestParameters.name
+            SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
+            fields eventTime, eventName, requestParameters.name
             | filter eventSource = "ssm.amazonaws.com"
             | filter eventName in ["PutParameter","DeleteParameter"]
             | filter requestParameters.name like /${var.user_id}/
-            | sort @timestamp desc | limit 20
+            | sort eventTime desc | limit 20
             ```
 
             **Pipeline vs. manual changes**
             ```
-            fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+            SOURCE logGroups(namePrefix: ["/aws/cloudtrail/advanced-terraform"]) START=-12h END=0s |
+            fields eventTime, eventName, userIdentity.arn, sourceIPAddress
             | filter userIdentity.arn like /${var.user_id}-codebuild-terraform-role/
-            | sort @timestamp desc | limit 50
+            | sort eventTime desc | limit 50
             ```
           EOT
         }

@@ -9,7 +9,9 @@ user_id = "userXX"
 # bucket_region  = "us-east-2"   # where your state bucket lives
 
 # This value comes from Lab 1 output. After running `terraform apply` in
-# lab1-state-infra, run `terraform output` to get your actual value.
-# Then update BOTH this file AND the backend block in providers.tf.
+# lab1/state-infra, run `terraform output` to get your actual value.
+# Then pass the bucket and its region to `terraform init` with -backend-config,
+# as Step 4 shows - a backend block cannot read variables, so nothing in
+# providers.tf needs editing.
 
 state_bucket_name = "userXX-terraform-state-SUFFIX"

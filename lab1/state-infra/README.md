@@ -8,21 +8,21 @@ This directory contains the complete solution for Lab 1 of Terraform Day 3.
 lab1/state-infra/
 ├── providers.tf              # AWS/random/time providers + commented backend block
 ├── variables.tf              # user_id, primary_region, bucket_region, state_bucket_name
-├── main.tf                   # S3 state bucket, locking demo, Part D cross-state
+├── main.tf                   # S3 state bucket, locking demo, Task 4 cross-state
 ├── workspace_guard.tf        # null_resource preconditions blocking bad workspaces
-├── outputs.tf                # state_bucket_name and the Part D outputs
+├── outputs.tf                # state_bucket_name and the Task 4 outputs
 ├── terraform.tfvars.example  # Copy to terraform.tfvars and fill in
 └── README.md                 # This file
 ```
 
 ## Deployment Steps
 
-### Part A: Initial Deployment (Local State)
+### Step 11: Initial Deployment (Local State)
 
 1. **Set your AWS login ID** in `terraform.tfvars`:
    ```hcl
    user_id = "user07"   # your assigned AWS login ID
-   account    = "user07"   # same value; used by Part D
+   account    = "user07"   # same value; used by Task 4
    ```
    `user_id` is validated against `^user[0-9]{2}$` — the placeholder `userXX` is rejected on purpose.
 
@@ -47,9 +47,9 @@ lab1/state-infra/
    ```
    The random 6-character suffix guarantees the name is globally unique, so no two students collide.
 
-### Part B: Migrate to Remote State
+### Step 12: Migrate to Remote State
 
-1. **Uncomment the backend block** in `providers.tf` and paste in the bucket name from Part A. The key is `lab1-app/terraform.tfstate`.
+1. **Uncomment the backend block** in `providers.tf` and paste in the bucket name from Step 11. The key is `lab1-app/terraform.tfstate`.
 
 2. **Re-initialize to migrate state**:
    ```bash
@@ -63,7 +63,7 @@ lab1/state-infra/
    # expect env:/dev/lab1-app/terraform.tfstate
    ```
 
-### Part C: Test State Locking
+### Step 18: Test State Locking
 
 1. **Open two terminal windows** in this directory.
 
@@ -86,9 +86,9 @@ lab1/state-infra/
 
 5. **Wait for Terminal 1 to complete**, then retry Terminal 2.
 
-### Part D: Cross-State Dependency
+### Task 4: Cross-State Dependency
 
-Set `state_bucket_name` in `terraform.tfvars` **after** `lab1/networking` has been deployed. Until it is set, the `terraform_remote_state` data source and the `app_config` parameter are gated off by `count` and Part A applies unchanged.
+Set `state_bucket_name` in `terraform.tfvars` **after** `lab1/networking` has been deployed. Until it is set, the `terraform_remote_state` data source and the `app_config` parameter are gated off by `count` and Step 11 applies unchanged.
 
 ## Resources Created
 
@@ -101,7 +101,7 @@ Set `state_bucket_name` in `terraform.tfvars` **after** `lab1/networking` has be
 | SSM Parameter | `/<user_id>/lab1/lock-demo` | Demo resource for the locking test |
 | Time Sleep | (30 seconds) | Creates the delay the locking demo needs |
 | Null Resource | `workspace_guard` | Preconditions rejecting invalid workspaces |
-| SSM Parameter | `/<account>/<workspace>/app-config` | Part D only — gated on `state_bucket_name` |
+| SSM Parameter | `/<account>/<workspace>/app-config` | Task 4 only — gated on `state_bucket_name` |
 
 ## Verification Commands
 

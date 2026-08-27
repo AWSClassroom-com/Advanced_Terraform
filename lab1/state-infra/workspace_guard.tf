@@ -1,5 +1,5 @@
 # workspace_guard.tf
-# Lab 1 Part B — Workspace Safety Guard
+# Lab 1 Task 3 — Workspace Safety Guard
 #
 # Prevents accidental operations in the wrong workspace by attaching
 # preconditions to a null_resource. Preconditions evaluate during

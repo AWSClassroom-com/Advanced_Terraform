@@ -11,13 +11,13 @@ user_id = "userXX"
 # primary_region = "us-east-2"
 
 # Optional — the region your state bucket lives in. Only read by the
-# cross-state data source in Part D. The backend gets this value from
+# cross-state data source in Task 4. The backend gets this value from
 # -backend-config at init time instead, because a backend block cannot
 # read variables.
 # bucket_region = "us-east-2"
 
-# Set this AFTER Part C completes. Run `terraform output state_bucket_name`
+# Set this AFTER Step 18 completes. Run `terraform output state_bucket_name`
 # in this directory to get the actual bucket name, then paste it here so
-# Part D's terraform_remote_state data source can read the networking outputs
+# Task 4's terraform_remote_state data source can read the networking outputs
 # from the lab1/networking state.
 # state_bucket_name = "userXX-terraform-state-abc123"

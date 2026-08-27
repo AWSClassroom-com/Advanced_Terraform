@@ -1,7 +1,7 @@
 # lab2/existing-stack/providers.tf
 #
-# LOCAL state by design — this stack plays the role of infrastructure built
-# infrastructure that lives outside Terraform's managed remote state. The whole
+# LOCAL state by design — this stack plays the role of infrastructure that
+# was built outside Terraform's managed remote state. The whole
 # point of Lab 2 is to import these resources INTO remote state.
 #
 # Providers configured here, no backend block — nothing remote owns this state.

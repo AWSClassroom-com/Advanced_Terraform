@@ -86,8 +86,8 @@ security group must import before its rules, because the rules reference the SG 
     cp terraform.tfvars.example terraform.tfvars
     ```
 
-    Edit `terraform.tfvars` and set **both** values. Neither has a default, so leaving either one
-    empty fails with "No value for required variable":
+    Edit `terraform.tfvars` and set `user_id`. Change `primary_region` only if your instructor
+    assigned you a different region:
 
     ```hcl
     user_id        = "userxx"     # your assigned AWS login ID, for example user07
@@ -107,20 +107,24 @@ security group must import before its rules, because the rules reference the SG 
     > its `providers.tf`. It is playing the role of infrastructure that exists outside your remote
     > state, which is the whole premise of the lab. Do not move it to S3.
 
-2. **Read the 8 resource IDs**
+2. **Read the resource IDs**
 
     ```bash
     terraform output
     ```
-    The output names match the import project's variable names 1:1:
+    Ten outputs print. Eight of them match the import project's variable names 1:1:
     - **VPC stack** — `vpc_id`, `subnet_id`, `internet_gateway_id`, `route_table_id`
     - **Security group and rules** — `security_group_id`, `sg_rule_http_id`, `sg_rule_ssh_id`, `sg_rule_egress_id`
+
+    The other two are about the route table association, and they are the interesting pair:
+    `route_table_association_id` is the raw `rtbassoc-` ID, and `import_compound_id_rt_assoc` is
+    the `subnet-id/rtb-id` form the import actually needs. Step 9 comes back to both.
 
     You also need your **state bucket name and the region the bucket is in**. This is the bucket
     Lab 1 created:
 
     ```bash
-    aws s3 ls | grep terraform-state
+    aws s3 ls | grep userXX-terraform-state
     aws s3api get-bucket-location --bucket "<your-bucket-name>" --query 'LocationConstraint' --output text
     ```
     The bucket name looks like `user07-terraform-state-x8k2m4`. The bucket's region **may or may
@@ -416,6 +420,7 @@ it against the same nine resources to see what it produces.
     terraform state list
     ```
     ```
+    data.aws_subnet.imported
     aws_internet_gateway.igw
     aws_route_table.public_rt
     aws_route_table_association.public_subnet_a
@@ -427,7 +432,7 @@ it against the same nine resources to see what it produces.
     aws_vpc_security_group_ingress_rule.allow-ssh-ipv4
     ```
 
-    Output is alphabetical by address — that is how `state list` always sorts.
+    Data sources list first, then managed resources alphabetically by address.
 
 ---
 
@@ -473,13 +478,24 @@ it against the same nine resources to see what it produces.
     **Expected:**
 
     ```
+    Plan: 0 to add, 0 to change, 8 to destroy.
+    ...
     Error: Instance cannot be destroyed
-      on network.tf line ...:
-       ... aws_vpc.custom-vpc ...
 
-    Resource aws_vpc.custom-vpc has lifecycle.prevent_destroy set, but the
-    plan calls for this resource to be destroyed.
+      on security-group.tf line 12:
+      12: resource "aws_security_group" "allow-http-ssh" {
+
+    Resource aws_security_group.allow-http-ssh has lifecycle.prevent_destroy set,
+    but the plan calls for this resource to be destroyed. To avoid this error and
+    continue with the plan, either disable lifecycle.prevent_destroy or reduce
+    the scope of the plan using the -target option.
     ```
+
+    > **Why the security group and not the VPC?** Both carry `prevent_destroy`, but you get one
+    > error, and the plan lists 8 resources rather than 9. In a destroy graph the dependency edges
+    > reverse: the VPC must go **last**, after everything inside it. The security group fails first,
+    > so the VPC node downstream of it is never evaluated and never reports its own guard. One
+    > protected resource is enough to stop the whole plan.
 
     > **What `prevent_destroy` does not protect against.** It blocks any plan whose action on the
     > resource is `destroy`, for as long as the `lifecycle` block stays in the configuration. It does
@@ -568,7 +584,7 @@ cd ~/Advanced_Terraform/lab2/import
     ```bash
     cd ~/Advanced_Terraform/lab2/existing-stack
     terraform state rm $(terraform state list)
-    rm -rf .terraform .terraform.lock.hcl terraform.tfstate.backup
+    rm -rf .terraform .terraform.lock.hcl terraform.tfstate*
     ```
 
     > **Do not run `terraform destroy` from `existing-stack/`.** The AWS resources are already gone,

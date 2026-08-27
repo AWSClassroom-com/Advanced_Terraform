@@ -10,9 +10,9 @@ want to check your work afterwards, this is a known-good copy to compare against
 
 | Folder | Mirrors | Contains the answers to |
 |---|---|---|
-| [`lab1/`](./lab1/) | `lab1/state-infra`, `lab1/networking`, `lab1/directories` | The Challenge, Parts 1 and 2 — carrying `vpc_cidr` and a new `public_subnet_cidr` across the state boundary |
+| [`lab1/`](./lab1/) | `lab1/state-infra`, `lab1/networking`, `lab1/directories` | Challenge 1, Parts 1 and 2 — carrying `vpc_cidr` and a new `public_subnet_cidr` across the state boundary. Also the end-of-lab `providers.tf`, with the backend block uncommented as it is after Step 12's migration |
 | [`lab2/`](./lab2/) | `lab2/existing-stack`, `lab2/import` | Step 8's four security group import blocks, Task 5's `prevent_destroy`, and the Challenge's cleaned `generated.tf` |
-| [`lab3/`](./lab3/) | `lab3/pipeline`, `lab3/app-repo` | Steps 23 and 24 — the `plan-staging` buildspec that pulls Parameter Store and Secrets Manager values at plan time |
+| [`lab3/`](./lab3/) | `lab3/pipeline`, `lab3/app-repo` | Steps 23 and 24 — the `plan-staging` buildspec that pulls Parameter Store and Secrets Manager values at plan time. Also Step 22's wrapper declarations, and all three Challenges: the tflint install and `tflint-ignore` annotation, and `modules/app/tests/validation.tftest.hcl` |
 | [`lab4/`](./lab4/) | `lab4/observability` | Nothing you write by hand; included so every lab has a reference copy |
 
 Each folder has its own README naming the specific files that differ from what ships in the lab

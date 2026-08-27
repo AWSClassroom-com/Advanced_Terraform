@@ -2,11 +2,11 @@
 # AWS Provider configuration with S3 backend for remote state
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
-  # PART B: Remote state backend
+  # STEP 12: Remote state backend - uncommented, as it is once you have migrated
   # -----------------------------------------------------------------
-  # After Part A completes, uncomment the block below and replace the
+  # After Step 11 creates the bucket, uncomment the block below and replace the
   # placeholder value with your actual bucket name from `terraform output`.
   # Then run `terraform init` to migrate state.
   #
@@ -16,11 +16,11 @@ terraform {
   # Then your backend block should be:
   #   bucket = "user01-terraform-state-abc123"
   # -----------------------------------------------------------------
-  # backend "s3" {
-  #   key          = "lab1-app/terraform.tfstate"
-  #   encrypt      = true
-  #   use_lockfile = true  # S3 native locking - no DynamoDB table needed
-  # }
+  backend "s3" {
+    key          = "lab1-app/terraform.tfstate"
+    encrypt      = true
+    use_lockfile = true # S3 native locking - no DynamoDB table needed
+  }
   #
   # Note there is no bucket or region here. A backend block cannot read
   # variables, so those two values are passed at init time instead:

@@ -12,8 +12,9 @@ internet_gateway_id = "igw-0xxxxxxxxxxxxxxxx"
 route_table_id      = "rtb-0xxxxxxxxxxxxxxxx"
 
 # Security group + 3 rule IDs.
-# Get the SG ID from `aws ec2 describe-security-groups --filters "Name=group-name,Values=userxx-allow-http-ssh"`.
-# Get rule IDs (start with sgr-) from `aws ec2 describe-security-group-rules --filters "Name=group-id,Values=<sg-id>"`.
+# Security group and rule IDs - also from `terraform output` in lab2/existing-stack/.
+# That stack emits security_group_id, sg_rule_http_id, sg_rule_ssh_id and
+# sg_rule_egress_id by name, so no describe- calls are needed.
 security_group_id = "sg-0xxxxxxxxxxxxxxxx"
 sg_rule_http_id   = "sgr-0xxxxxxxxxxxxxxxx"
 sg_rule_ssh_id    = "sgr-0xxxxxxxxxxxxxxxx"

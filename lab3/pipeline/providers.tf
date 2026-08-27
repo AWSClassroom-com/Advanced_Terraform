@@ -1,7 +1,7 @@
 # providers.tf - Provider configuration and S3 backend
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
   # Bucket and region are supplied at init time - a backend block cannot read
   # variables:

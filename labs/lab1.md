@@ -206,8 +206,8 @@ In Day 2 Chapter 7 you saw Terraform workspaces in lecture. Here you use them.
     terraform workspace select staging
     terraform state list
     ```
-    **Expected:** `dev` from `workspace show`, and no output from either `state list`. Nothing is
-    deployed yet, and each workspace reads a different state file.
+    **Expected:** `dev` from `workspace show`, then `No state file was found!` from both
+    `state list` calls. Nothing is deployed yet, so neither workspace has a state file to read.
 
     > **Production note:** Workspaces isolate *state*, not *credentials*. The same AWS IAM permissions apply regardless of which workspace you're in. In production environments, teams often use separate AWS accounts per environment (dev/staging/prod) with IAM role assumption, so that workspace selection alone cannot accidentally modify production resources.
 
@@ -284,7 +284,7 @@ The checkout team's near-miss happened because a junior engineer thought they we
     **Expected** (your suffix will differ):
 
     ```
-    state_bucket_name = "user07-terraform-state-x8k2m4"
+    "user07-terraform-state-x8k2m4"
     ```
 
     Write this value down. Every later reference to "your state bucket" means this exact string.
@@ -380,7 +380,7 @@ The checkout team's near-miss happened because a junior engineer thought they we
     ```
     **How it works:**
     - `precondition` blocks are evaluated during `terraform plan` when Terraform processes this resource
-    - If a precondition fails, Terraform stops planning immediately -- no resources are created or modified
+    - If a precondition fails, Terraform reports the error and refuses to apply -- no resources are created or modified
     - First precondition blocks the `default` workspace entirely
     - Second precondition allows only `dev`, `staging`, `prod`, or `feature-*` workspaces
     - Production workspace triggers a warning output
@@ -397,15 +397,28 @@ The checkout team's near-miss happened because a junior engineer thought they we
     ```
     Error: Resource precondition failed
 
-      on workspace_guard.tf line X, in resource "null_resource" "workspace_guard":
+      on workspace_guard.tf line 21, in resource "null_resource" "workspace_guard":
+      21:       condition     = terraform.workspace != "default"
+        +----------------
+        | terraform.workspace is "default"
+
+    ERROR: Cannot run Terraform in 'default' workspace.
+
+    Please select an environment workspace:
+      terraform workspace select dev
+      ...
+
+    Error: Resource precondition failed
+
+      on workspace_guard.tf line 36, in resource "null_resource" "workspace_guard":
 
     ERROR: Workspace 'default' is not allowed.
 
     Allowed workspaces: dev, staging, prod
     Or use a feature branch workspace: feature-*
     ```
-    Both preconditions fail for `default`; Terraform surfaces the second one because its message
-    is the more general of the two. Now switch back and plan again:
+    Both preconditions fail, and Terraform reports both — the `default` check first, because it is
+    written first. Now switch back and plan again:
 
     ```bash
     terraform workspace select dev
@@ -452,11 +465,9 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
       required_version = ">= 1.10.0"
 
       backend "s3" {
-        bucket       = "<paste-state_bucket_name-output-here>"   # from `terraform output` in lab1/state-infra
-        key          = "networking/terraform.tfstate"             # Note: NO workspace prefix
-        region       = "<your-assigned-region>"                   # e.g. us-east-2 — match what your instructor assigned
+        key          = "networking/terraform.tfstate" # No env:/ prefix — networking state is shared
         encrypt      = true
-        use_lockfile = true
+        use_lockfile = true # Terraform 1.10+ S3 native locking
       }
 
       required_providers {
@@ -486,8 +497,10 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     ```
     Outputs:
 
+    internet_gateway_id = "igw-xxxxxxxxx"
     security_group_id = "sg-xxxxxxxxx"
     subnet_id = "subnet-xxxxxxxxx"
+    vpc_cidr = "10.20.0.0/16"
     vpc_id = "vpc-xxxxxxxxx"
     ```
 
@@ -510,7 +523,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
       config = {
         bucket = var.state_bucket_name
         key    = "networking/terraform.tfstate"
-        region = var.primary_region
+        region = var.bucket_region
       }
     }
 
@@ -594,6 +607,7 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     ```
     app_config_ssm_parameter = "/userxx/dev/app-config"
     networking_vpc_id = "vpc-xxxxxxxxx"
+    state_bucket_name = "userxx-terraform-state-xxxxxx"
     ```
 
     Verify the VPC ID matches what you recorded from the networking deployment.
@@ -728,8 +742,8 @@ Run the full lifecycle in `lab1/state-infra`, on both sides of the guard.
 
 **Part 1 — prove the guard says no.** Create a workspace named `hotfix` and run `terraform plan`.
 
-**Success condition:** the plan fails with the guard's own error message, before anything is
-planned. Delete the workspace afterwards.
+**Success condition:** the plan ends with the guard's own error message and Terraform refuses to
+apply. Delete the workspace afterwards.
 
 **Part 2 — a compliant workspace, created and destroyed.** Create `feature-demo`, materialize its
 state file, confirm the file exists in the bucket, then tear the workspace down completely.

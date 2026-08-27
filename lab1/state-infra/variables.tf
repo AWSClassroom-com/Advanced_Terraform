@@ -58,6 +58,6 @@ locals {
   }
 
   # Falls back to dev if workspace isn't one of the three above (so plans
-  # succeed before Part B's workspace_guard.tf is in place).
+  # succeed before Step 13's workspace_guard.tf is in place).
   config = lookup(local.environment_config, terraform.workspace, local.environment_config.dev)
 }
