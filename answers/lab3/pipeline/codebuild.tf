@@ -85,7 +85,8 @@ resource "aws_codebuild_project" "validate" {
             - unzip -q -o /tmp/terraform.zip -d /usr/local/bin
             - terraform version
             - echo "=== Installing tflint (Challenge) ==="
-            - curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+            - curl -sSL -o /tmp/tflint.zip https://github.com/terraform-linters/tflint/releases/download/v${var.tflint_version}/tflint_linux_amd64.zip
+            - unzip -q -o /tmp/tflint.zip -d /usr/local/bin
             - tflint --version
         build:
           commands:

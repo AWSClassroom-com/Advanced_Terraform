@@ -18,6 +18,22 @@ variable "terraform_version" {
   }
 }
 
+variable "tflint_version" {
+  description = <<-EOT
+    tflint release the Validate stage installs, used only by the linter Challenge.
+    Pinned to a release asset rather than the upstream install script: that script
+    prints "This automated installation script will be removed on Sep 1, 2026",
+    and a Validate stage that installs from it stops working on that date.
+  EOT
+  type        = string
+  default     = "0.64.0"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.tflint_version))
+    error_message = "tflint_version must be an exact version such as 0.64.0."
+  }
+}
+
 variable "user_id" {
   description = "Your assigned AWS login ID (for example user07) — the same value you used in Lab 1"
   type        = string

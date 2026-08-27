@@ -92,14 +92,8 @@ resource "aws_ssm_parameter" "lock_demo" {
     Name = "${var.user_id}-lock-demo"
   }
 
-  # Challenge Part 1, second half: with `ignore_changes = [value]` in place, adding a key
-  # to the jsonencode block produces NO diff — Terraform is told to ignore the whole
-  # attribute. `timestamp()` is why it was there: it changes on every plan and would
-  # otherwise make this resource perpetually dirty. Dropping deployed_at removes the
-  # need for ignore_changes, so real contract changes show up as real diffs.
-  # (Keeping ignore_changes and running `terraform apply -replace` also works.)
   lifecycle {
-    ignore_changes = []
+    ignore_changes = [value]
   }
 }
 
@@ -159,8 +153,14 @@ resource "aws_ssm_parameter" "app_config" {
     Workspace   = terraform.workspace
   }
 
+  # Challenge Part 1, second half: with `ignore_changes = [value]` in place, adding a key
+  # to the jsonencode block produces NO diff — Terraform is told to ignore the whole
+  # attribute. `timestamp()` is why it was there: it changes on every plan and would
+  # otherwise make this resource perpetually dirty. Dropping deployed_at removes the
+  # need for ignore_changes, so real contract changes show up as real diffs.
+  # (Keeping ignore_changes and running `terraform apply -replace` also works.)
   lifecycle {
-    ignore_changes = [value]
+    ignore_changes = []
   }
 }
 

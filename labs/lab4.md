@@ -479,11 +479,13 @@ this lab.
 cd ~/Advanced_Terraform/lab4/observability && terraform destroy
 
 # Saved queries and CodeBuild log groups are not Terraform-managed, so destroy leaves them.
-for Q in $(aws logs describe-query-definitions --region us-east-2 \n        --query "queryDefinitions[?starts_with(name,'userXX')].queryDefinitionId" --output text); do
+for Q in $(aws logs describe-query-definitions --region us-east-2 \
+        --query "queryDefinitions[?starts_with(name,'userXX')].queryDefinitionId" --output text); do
     aws logs delete-query-definition --region us-east-2 --query-definition-id "$Q"
 done
 
-for G in $(aws logs describe-log-groups --region us-east-2 \n        --query "logGroups[?contains(logGroupName,'userXX')].logGroupName" --output text); do
+for G in $(aws logs describe-log-groups --region us-east-2 \
+        --query "logGroups[?contains(logGroupName,'userXX')].logGroupName" --output text); do
     aws logs delete-log-group --region us-east-2 --log-group-name "$G"
 done
 ```

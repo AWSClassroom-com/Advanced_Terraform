@@ -745,8 +745,11 @@ Two things to work out for yourself:
   reason.
 
 > **If you get stuck:** the install line is
-> `curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash`,
-> and `tflint --call-module-type=none` keeps the lint scoped to the wrapper directory itself.
+> `curl -sSL -o /tmp/tflint.zip https://github.com/terraform-linters/tflint/releases/download/v0.64.0/tflint_linux_amd64.zip`
+> followed by `unzip -q -o /tmp/tflint.zip -d /usr/local/bin`, and `tflint --call-module-type=none`
+> keeps the lint scoped to the wrapper directory itself. Pin the release rather than piping the
+> upstream install script: that script is being withdrawn on 1 September 2026, and a build that
+> installs from it stops working on that date.
 > The full buildspec is in `answers/lab3/pipeline/codebuild.tf`.
 
 ---

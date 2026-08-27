@@ -29,6 +29,8 @@ directories.
 
 You can, but you do not need to. Copy a file across, or diff against your own:
 
+> **One exception: `lab1/state-infra`.** This copy is the *end of lab* tree, so its backend block is already uncommented and points at an S3 bucket that this same configuration creates. There is no way to `init` it from scratch, and the bucket name carries a random suffix so it cannot be guessed. Diff against it; do not try to apply it standalone.
+
 ```bash
 diff ~/Advanced_Terraform/lab2/import/imports.tf \
      ~/Advanced_Terraform/answers/lab2/import/imports.tf

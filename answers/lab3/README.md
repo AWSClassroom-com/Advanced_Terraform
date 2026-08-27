@@ -52,5 +52,3 @@ That is the enterprise pattern in miniature: adopt a linter, hit a finding on co
 for a reason the linter cannot see, and record the reason at the finding site instead of turning
 the rule off.
 
-> Not yet verified on the lab VM — confirm the tflint install and both lint runs during the
-> end-to-end lab pass before shipping.
