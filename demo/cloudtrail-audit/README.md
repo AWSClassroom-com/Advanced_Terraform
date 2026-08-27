@@ -59,45 +59,63 @@ Two advanced event selectors:
 > in the class call `StopLogging` or `DeleteTrail`. Run it somewhere your own administrator
 > identity applies instead.
 
-Either of these works. Both end up in the same place, so pick whichever is less friction on the day.
+Run it as **yourself**, from CloudShell. It launches from the console toolbar, already
+authenticated as your own IAM user, so there are no credentials to configure and no profile to
+pick. Open it **in the region the class deploys to** — CloudShell's home directory is per-region.
 
-**Option A — your own workstation.** If you already have Terraform installed and a profile for the
-classroom account, this is one command:
+**1 — install Terraform, if it is not already there.**
 
-```bash
-git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
-cd Advanced_Terraform/demo/cloudtrail-audit
-export AWS_PROFILE=<your classroom profile>
-```
-
-**Option B — CloudShell.** Open CloudShell from the console toolbar, in the region the class
-deploys to. It runs as *you*, so no credentials to configure. It does **not** ship Terraform, so
-install it once — `$HOME` survives between CloudShell sessions, so this is a one-time cost per
-region:
+CloudShell does not ship Terraform. Its 1 GB `$HOME` does persist between sessions, so this is
+once per account per region, not once per demo. The block below is safe to re-run: it installs
+only when `terraform` is missing and never duplicates the PATH line.
 
 ```bash
 mkdir -p ~/bin
-curl -sS -o /tmp/tf.zip https://releases.hashicorp.com/terraform/1.15.9/terraform_1.15.9_linux_amd64.zip
-unzip -q -o /tmp/tf.zip -d ~/bin
-echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc && export PATH=$HOME/bin:$PATH
-terraform version
+grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
+export PATH=$HOME/bin:$PATH
 
-git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
-cd Advanced_Terraform/demo/cloudtrail-audit
+if command -v terraform >/dev/null; then
+    echo "already installed: $(terraform version | head -1)"
+else
+    curl -sS -o /tmp/tf.zip https://releases.hashicorp.com/terraform/1.15.9/terraform_1.15.9_linux_amd64.zip
+    unzip -q -o /tmp/tf.zip -d ~/bin
+    terraform version
+fi
 ```
 
-> **CloudShell's `$HOME` persists, everything else does not.** The 1 GB home directory survives, so
-> `~/bin/terraform` and the cloned repo are both still there next session — including the local
-> state file this demo depends on. Anything you install outside `$HOME` is gone when the session
-> ends. Home is also per-region, so a different region means installing again.
+**Expected:** a version line either way — `Terraform v1.15.9` on a first run, or
+`already installed: Terraform v1.15.9` afterwards.
 
-State is **local on purpose**. The instructor applies this once per cohort, so there is no shared state to coordinate and no chicken-and-egg with Lab 1's state bucket. There is no backend block and no `-backend-config` to pass.
+**2 — get the demo.** Also safe to re-run; it pulls if the clone already exists.
 
 ```bash
-cd demo/cloudtrail-audit
+cd ~
+if [ -d Advanced_Terraform ]; then
+    git -C Advanced_Terraform pull --ff-only
+else
+    git clone https://github.com/AWSClassroom-com/Advanced_Terraform.git
+fi
+cd ~/Advanced_Terraform/demo/cloudtrail-audit
+```
+
+**3 — apply it.**
+
+State is **local on purpose**. You apply this once per cohort, so there is no shared state to
+coordinate and no chicken-and-egg with Lab 1's state bucket. There is no backend block and no
+`-backend-config` to pass.
+
+```bash
 terraform init
 terraform apply
 ```
+
+> **Keep this directory.** `terraform.tfstate` here is the only way to tear the demo down later,
+> and it lives in CloudShell's `$HOME`, which survives between sessions. Destroy from this same
+> region's CloudShell.
+
+> **If you would rather use your own workstation**, everything above applies except step 1 — clone
+> the repo, `cd` to `demo/cloudtrail-audit`, and set `AWS_PROFILE` to a profile with administrator
+> access in the classroom account before `terraform init`.
 
 Keep the directory and its `terraform.tfstate` file. That local state is the only way to tear the demo down later.
 
