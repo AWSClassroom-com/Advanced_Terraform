@@ -99,7 +99,7 @@ By the end of this lab, you will:
     ```bash
     grep -A2 'terraform plan -out' codebuild.tf
     grep -A2 'terraform apply' codebuild.tf
-    grep -A2 'install:' codebuild.tf | head -6
+    grep -A4 'install:' codebuild.tf | head -6
     ```
 
     ```bash

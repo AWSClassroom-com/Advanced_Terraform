@@ -236,8 +236,9 @@ In Day 2 Chapter 7 you saw Terraform workspaces in lecture. Here you use them.
         }
       }
 
-      # Select config for current workspace
-      config = local.environment_config[terraform.workspace]
+      # Select config for current workspace, falling back to dev so a feature-*
+      # workspace still plans instead of erroring on a missing key
+      config = lookup(local.environment_config, terraform.workspace, local.environment_config.dev)
     }
     ```
 

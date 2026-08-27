@@ -13,8 +13,8 @@ terraform {
   # Example: If your output shows:
   #   state_bucket_name = "user01-terraform-state-abc123"
   #
-  # Then your backend block should be:
-  #   bucket = "user01-terraform-state-abc123"
+  # Then pass it at init time - NOT in the block below:
+  #   terraform init -migrate-state -backend-config="bucket=user01-terraform-state-abc123"
   # -----------------------------------------------------------------
   # backend "s3" {
   #   key          = "lab1-app/terraform.tfstate"

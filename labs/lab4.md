@@ -54,7 +54,7 @@ By the end of this lab, you will:
 |---------|----------------|
 | **CloudTrail** | Records every AWS API call -- immutable audit trail |
 | **User Agent** | Terraform sends a `Terraform/<version>` token in user agent — distinguishes from console |
-| **Source IP** | The build container's private address for pipeline-originated calls vs. a public IP for calls made by hand |
+| **Source IP** | An AWS-owned public address for pipeline calls vs. your instance's public IP for calls made by hand - the weakest of the three |
 | **userIdentity.arn** | Names the role that signed the call: the CodeBuild role for pipeline work, the EC2 instance role for anything run by hand |
 
 ---
@@ -135,10 +135,10 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     |-------|---------|-------------------|
     | `userIdentity.arn` | `arn:aws:sts::<account>:assumed-role/userXX-codebuild-terraform-role/<session>` | Which CodeBuild role was active for this call |
     | `userAgent` | A string containing `APN/1.0 HashiCorp/1.0 Terraform/1.10.x` | Confirms a Terraform-originated operation |
-    | `sourceIPAddress` | A private address such as `10.0.94.209` when Terraform ran inside CodeBuild, or a public IP when it ran from the lab EC2 instance | Weak signal on its own; see the note below |
+    | `sourceIPAddress` | A public address either way - AWS-owned when Terraform ran inside CodeBuild, your instance's when it ran from the lab EC2 instance | Weak signal on its own; see the note below |
     | `eventTime` | `2026-05-03T14:33:45Z` | Exact UTC timestamp |
 
-    > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, not which service orchestrated it. Terraform running inside a CodeBuild container signs with the CodeBuild role but reports the container's private address, so you will see something like `10.0.94.209` rather than `codebuild.amazonaws.com`. Some AWS services do report their own hostname, which is why the field looks inconsistent across events. For telling pipeline activity from manual activity, `userIdentity.arn` and `userAgent` are the reliable fields.
+    > **Reality check on `sourceIPAddress`:** it records where the SDK call came from, not which service orchestrated it. A CodeBuild project with no `vpc_config` - like this one - runs in AWS-managed networking, so its calls arrive from an AWS-owned **public** address such as `52.15.247.209`, not from `codebuild.amazonaws.com` and not from a private `10.x`. Put the same project in a VPC and the S3 calls start arriving from `10.x` while the rest still do not, which is exactly why this field is unreliable. For telling pipeline activity from manual activity, `userIdentity.arn` and `userAgent` are the fields to trust.
 4. **Compare the same action run by hand**
 
     Go back to the **PutParameter** results and open an event whose **User name** starts with **`i-`**. Same API call, same day, run from your lab instance instead of the pipeline. Select both events and choose **Compare event details** to see them side by side.
@@ -147,7 +147,7 @@ Every API call from Labs 1-3 was recorded by CloudTrail. Let's trace that activi
     |-------|-------------------|------------------------|
     | `userIdentity.arn` | `.../userXX-codebuild-terraform-role/AWSCodeBuild-<build id>` | `.../Terraform-InstanceRole/i-<instance id>` |
     | `userAgent` | Contains `Terraform/1.15.x` | Contains `aws-cli/<version>` |
-    | `sourceIPAddress` | The build container's private address, e.g. `10.0.94.209` | The EC2 instance's public IP |
+    | `sourceIPAddress` | An AWS-owned public address, e.g. `52.15.247.209` | The EC2 instance's public IP |
 
     > **Neither one is an IAM user.** Both are assumed roles: the pipeline's CodeBuild role, and the instance profile on your lab VM. The event names the *role* that acted, not the person.
 
@@ -188,8 +188,8 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
 
     | eventTime | eventName | userIdentity.arn | sourceIPAddress |
     |---|---|---|---|
-    | 2026-05-14 15:42:11 | PutParameter | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
-    | 2026-05-14 15:42:09 | CreateLogGroup | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 10.0.94.209 |
+    | 2026-05-14 15:42:11 | PutParameter | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 52.15.247.209 |
+    | 2026-05-14 15:42:09 | CreateLogGroup | arn:aws:sts::123…:assumed-role/user07-codebuild-terraform-role/AWSCodeBuild-83cb90b3 | 52.15.247.209 |
     | 2026-05-14 15:41:55 | CreateLogStream | arn:aws:iam::123…:user/user07 | 52.x.x.x |
 
     The mix is what you want to see. **Most rows carry `Terraform-InstanceRole`** — that is you, running Terraform on the lab instance, and every `plan` or `apply` emits dozens of S3 data events. The `codebuild-terraform-role` rows are the pipeline's, and they are rarer because the pipeline only runs when you push. Telling the two apart is the whole point: in a real account, work on production should look like the second group, not the first.
@@ -254,7 +254,7 @@ CloudTrail Event history works for one-off investigations, one attribute at a ti
     | eventTime | eventName | requestParameters.name |
     |---|---|---|
     | 2026-05-14 16:01:22 | PutParameter | /user07/lab3/db_host |
-    | 2026-05-14 16:01:18 | PutParameter | /user07/lab3/db_password |
+    | 2026-05-14 16:01:18 | PutParameter | /user07/staging/db-endpoint |
 
 8. **Save the query for reuse**
 
@@ -478,7 +478,9 @@ this lab.
 # Lab 4
 cd ~/Advanced_Terraform/lab4/observability && terraform destroy
 
-# Saved queries and CodeBuild log groups are not Terraform-managed, so destroy leaves them.
+# The by-hand parameter from Task 1, plus saved queries and CodeBuild log groups:
+# none are Terraform-managed, so destroy leaves them all behind.
+aws ssm delete-parameter --region us-east-1 --name "/userXX/staging/audit-check"
 for Q in $(aws logs describe-query-definitions --region us-east-2 \
         --query "queryDefinitions[?starts_with(name,'userXX')].queryDefinitionId" --output text); do
     aws logs delete-query-definition --region us-east-2 --query-definition-id "$Q"
@@ -515,12 +517,18 @@ cd ~/Advanced_Terraform/lab2/import && terraform destroy
 cd ~/Advanced_Terraform/lab1/networking && terraform destroy
 ```
 ```bash
-# Lab 1 — the state bucket last. Empty it first; versioned S3 buckets refuse delete with objects in them.
-aws s3 rm s3://userXX-terraform-state-SUFFIX --recursive
-aws s3api delete-objects --bucket userXX-terraform-state-SUFFIX \
-    --delete "$(aws s3api list-object-versions --bucket userXX-terraform-state-SUFFIX \
-        --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
-cd ~/Advanced_Terraform/lab1/state-infra && terraform destroy
+# Lab 1 — the state bucket last, and by hand. Step 24 removed it from state, so
+# `terraform destroy` will not touch it. Versioning means the object versions AND
+# the delete markers both have to go before the bucket will delete.
+BUCKET=userXX-terraform-state-SUFFIX
+
+for KEY in Versions DeleteMarkers; do
+    aws s3api list-object-versions --bucket "$BUCKET" \
+        --query "{Objects: $KEY[].{Key:Key,VersionId:VersionId}}" --output json > /tmp/del.json
+    grep -q null /tmp/del.json || aws s3api delete-objects --bucket "$BUCKET" --delete file:///tmp/del.json
+done
+
+aws s3api delete-bucket --bucket "$BUCKET"
 ```
 ---
 

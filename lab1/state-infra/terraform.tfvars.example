@@ -16,7 +16,7 @@ user_id = "userXX"
 # read variables.
 # bucket_region = "us-east-2"
 
-# Set this AFTER Step 18 completes. Run `terraform output state_bucket_name`
+# Set this at Step 18. Run `terraform output state_bucket_name`
 # in this directory to get the actual bucket name, then paste it here so
 # Task 4's terraform_remote_state data source can read the networking outputs
 # from the lab1/networking state.
