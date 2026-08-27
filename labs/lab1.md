@@ -117,7 +117,6 @@ appears by magic.
 4. **Install Terraform**
 
     ```bash
-    sudo yum install -y yum-utils
     sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
     sudo yum -y install terraform
     terraform -v
@@ -591,7 +590,18 @@ The networking team maintains the VPC. Your application team needs the VPC ID an
     ```
     (If you get a `workspace_guard` error here, you are in the wrong workspace. Select `dev` and try again.)
 
-    **Observe the plan:** Notice that `vpc_id`, `subnet_id`, and `security_group_id` are read from the networking state -- not hardcoded.
+    **Observe the plan:** the parameter's body is hidden -- `aws_ssm_parameter.value` is sensitive,
+    so the whole `jsonencode(...)` renders as `value = (sensitive value)`. Look at
+    **Changes to Outputs** instead:
+
+    ```
+    Changes to Outputs:
+      + app_config_ssm_parameter = "/userxx/dev/app-config"
+      + networking_vpc_id        = "vpc-xxxxxxxxx"
+    ```
+
+    `networking_vpc_id` is the cross-state read: that value came out of the networking state,
+    not out of this configuration.
 
     ```bash
     terraform apply
